@@ -1,13 +1,17 @@
 "use client";
 
 import { RecordingState } from "@/hooks/useAudioRecorder";
+import { useState } from "react";
 
 interface AudioWaveformProps {
   state: RecordingState;
 }
 
+const generateHeights = () => [...Array(5)].map(() => Math.max(20, Math.random() * 40 + 20));
+
 export function AudioWaveform({ state }: AudioWaveformProps) {
   const isActive = state === "recording" || state === "speaking";
+  const [heights] = useState(() => generateHeights());
 
   return (
     <div className="flex items-center justify-center gap-1 h-12">
@@ -24,7 +28,7 @@ export function AudioWaveform({ state }: AudioWaveformProps) {
                   : "bg-cyan-500"
               }`}
               style={{
-                height: `${Math.max(20, Math.random() * 40 + 20)}px`,
+                height: `${heights[i]}px`,
                 animationDelay: `${i * 100}ms`,
                 animationDuration: `${400 + i * 100}ms`,
               }}

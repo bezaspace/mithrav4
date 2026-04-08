@@ -24,6 +24,7 @@ export default function VoiceAssistantPage() {
     error: assistantError,
     conversation,
     currentStreamingText,
+    currentToolResults,
     ttsProvider,
     toggleTtsProvider,
     clearConversation,
@@ -54,11 +55,12 @@ export default function VoiceAssistantPage() {
     : recordingState;
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] flex">
+    <main className="flex-1 bg-[#0a0a0a] flex min-h-[calc(100vh-4rem)]">
       {/* Left sidebar - Conversation History */}
       <aside className="w-80 border-r border-zinc-800 hidden md:flex flex-col">
         <ConversationHistory
           messages={conversation}
+          streamingToolResults={currentToolResults}
           onClear={clearConversation}
         />
       </aside>
@@ -181,6 +183,7 @@ export default function VoiceAssistantPage() {
               <div className="flex-1 overflow-hidden">
                 <ConversationHistory
                   messages={conversation}
+                  streamingToolResults={currentToolResults}
                   onClear={() => {
                     clearConversation();
                     const sidebar =

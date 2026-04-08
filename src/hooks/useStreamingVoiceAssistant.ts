@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import type { ToolResult } from "@/components/DynamicComponentRenderer";
 
 export type TtsProvider = "sarvam" | "piper";
 
@@ -8,6 +9,7 @@ interface Message {
   role: "user" | "model";
   text: string;
   timestamp: number;
+  toolResults?: ToolResult[];
 }
 
 interface PendingAudio {
@@ -22,6 +24,7 @@ interface UseStreamingVoiceAssistantReturn {
   error: string | null;
   conversation: Message[];
   currentStreamingText: string;
+  currentToolResults: ToolResult[];
   ttsProvider: TtsProvider;
   setTtsProvider: (provider: TtsProvider) => void;
   toggleTtsProvider: () => void;
@@ -35,6 +38,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
   const [error, setError] = useState<string | null>(null);
   const [conversation, setConversation] = useState<Message[]>([]);
   const [currentStreamingText, setCurrentStreamingText] = useState("");
+  const [currentToolResults, setCurrentToolResults] = useState<ToolResult[]>([]);
   const [ttsProvider, setTtsProvider] = useState<TtsProvider>("sarvam");
 
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -133,6 +137,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
 
   const clearConversation = useCallback(() => {
     setConversation([]);
+    setCurrentToolResults([]);
     audioQueueRef.current = [];
   }, []);
 
@@ -143,6 +148,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         setIsProcessing(true);
         setIsStreaming(true);
         setCurrentStreamingText("");
+        setCurrentToolResults([]);
 
         initAudioContext();
 
@@ -171,6 +177,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         const decoder = new TextDecoder();
         let buffer = "";
         let fullText = "";
+        const accumulatedToolResults: ToolResult[] = [];
 
         while (true) {
           const { done, value } = await reader.read();
@@ -192,19 +199,16 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
                     break;
 
                   case "sentence":
-                    // Sentence ready for display (TTS processing started on server)
-                    // Server handles all TTS processing, client just displays
+                    // Sentence ready for display
                     break;
 
                   case "tts-start":
-                    // Server started processing TTS for this sentence
-                    // Just informational - server pipeline is working
+                    // Server started processing TTS
                     break;
 
                   case "audio":
                     // Audio received from server - queue and play
                     if (data.data && data.text) {
-                      // Determine format based on TTS provider
                       const format: "mp3" | "wav" = ttsProvider === "sarvam" ? "mp3" : "wav";
                       queueAudio({
                         audio: data.data,
@@ -212,6 +216,16 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
                         text: data.text,
                       });
                     }
+                    break;
+
+                  case "tool_result":
+                    // Tool result received - add to accumulated results
+                    const toolResult: ToolResult = {
+                      toolName: data.toolName,
+                      result: data.result,
+                    };
+                    accumulatedToolResults.push(toolResult);
+                    setCurrentToolResults([...accumulatedToolResults]);
                     break;
 
                   case "error":
@@ -222,7 +236,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
                     setIsStreaming(false);
                     setIsProcessing(false);
 
-                    // Add to conversation history
+                    // Add to conversation history with tool results
                     setConversation((prev) => [
                       ...prev,
                       {
@@ -234,8 +248,14 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
                         role: "model",
                         text: data.text || fullText,
                         timestamp: Date.now(),
+                        toolResults: accumulatedToolResults.length > 0 
+                          ? [...accumulatedToolResults] 
+                          : undefined,
                       },
                     ]);
+                    
+                    // Clear current tool results for next message
+                    setCurrentToolResults([]);
                     setCurrentStreamingText("");
                     break;
                 }
@@ -251,6 +271,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         setIsStreaming(false);
         setIsProcessing(false);
         setCurrentStreamingText("");
+        setCurrentToolResults([]);
       }
     },
     [conversation, initAudioContext, queueAudio, ttsProvider]
@@ -262,6 +283,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
     error,
     conversation,
     currentStreamingText,
+    currentToolResults,
     ttsProvider,
     setTtsProvider,
     toggleTtsProvider,

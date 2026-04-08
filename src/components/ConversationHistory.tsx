@@ -1,18 +1,24 @@
 "use client";
 
+import { MarkdownRenderer } from "./MarkdownRenderer";
+import { DynamicComponentRenderer, type ToolResult } from "./DynamicComponentRenderer";
+
 interface Message {
   role: "user" | "model";
   text: string;
   timestamp: number;
+  toolResults?: ToolResult[];
 }
 
 interface ConversationHistoryProps {
   messages: Message[];
+  streamingToolResults?: ToolResult[];
   onClear: () => void;
 }
 
 export function ConversationHistory({
   messages,
+  streamingToolResults,
   onClear,
 }: ConversationHistoryProps) {
   if (messages.length === 0) {
@@ -68,48 +74,70 @@ export function ConversationHistory({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
+          <div key={index} className="space-y-3">
+            {/* Message bubble */}
             <div
-              className={`max-w-[85%] px-4 py-3 rounded-2xl ${
-                message.role === "user"
-                  ? "bg-cyan-900/40 text-cyan-50 rounded-br-md"
-                  : "bg-zinc-800 text-zinc-200 rounded-bl-md"
+              className={`flex ${
+                message.role === "user" ? "justify-end" : "justify-start"
               }`}
             >
-              {message.role === "user" && message.text === "[Voice input]" ? (
-                <div className="flex items-center gap-2">
-                  <svg
-                    className="w-4 h-4 text-cyan-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                    />
-                  </svg>
-                  <span className="text-sm italic opacity-80">Voice message</span>
-                </div>
-              ) : (
-                <p className="text-sm leading-relaxed">{message.text}</p>
-              )}
-              <span className="text-[10px] opacity-40 mt-2 block">
-                {new Date(message.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
+              <div
+                className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+                  message.role === "user"
+                    ? "bg-cyan-900/40 text-cyan-50 rounded-br-md"
+                    : "bg-zinc-800 text-zinc-200 rounded-bl-md"
+                }`}
+              >
+                {message.role === "user" && message.text === "[Voice input]" ? (
+                  <div className="flex items-center gap-2">
+                    <svg
+                      className="w-4 h-4 text-cyan-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
+                      />
+                    </svg>
+                    <span className="text-sm italic opacity-80">Voice message</span>
+                  </div>
+                ) : (
+                  <div className="text-sm leading-relaxed">
+                    <MarkdownRenderer text={message.text} />
+                  </div>
+                )}
+                <span className="text-[10px] opacity-40 mt-2 block">
+                  {new Date(message.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
             </div>
+            
+            {/* Dynamic components for this message (only for model messages) */}
+            {message.role === "model" && message.toolResults && message.toolResults.length > 0 && (
+              <div className="flex justify-start">
+                <div className="max-w-[95%]">
+                  <DynamicComponentRenderer toolResults={message.toolResults} />
+                </div>
+              </div>
+            )}
           </div>
         ))}
+        
+        {/* Streaming tool results (for current streaming message) */}
+        {streamingToolResults && streamingToolResults.length > 0 && (
+          <div className="flex justify-start">
+            <div className="max-w-[95%]">
+              <DynamicComponentRenderer toolResults={streamingToolResults} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

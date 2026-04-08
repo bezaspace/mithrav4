@@ -1,5 +1,7 @@
 "use client";
 
+import { MarkdownRenderer } from "./MarkdownRenderer";
+
 interface StreamingStatusProps {
   isStreaming: boolean;
   currentText: string;
@@ -35,12 +37,12 @@ export function StreamingStatus({ isStreaming, currentText }: StreamingStatusPro
 
       {currentText && (
         <div className="text-center px-4">
-          <p className="text-base text-zinc-200 leading-relaxed">
-            {currentText}
+          <div className="text-base text-zinc-200 leading-relaxed inline">
+            <MarkdownRenderer text={currentText} />
             {isStreaming && (
-              <span className="inline-block w-2 h-4 ml-1 bg-cyan-500 animate-pulse" />
+              <span className="inline-block w-2 h-4 ml-1 bg-cyan-500 animate-pulse align-middle" />
             )}
-          </p>
+          </div>
         </div>
       )}
     </div>
