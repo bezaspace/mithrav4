@@ -2,11 +2,14 @@
 
 import { RecordingState } from "@/hooks/useAudioRecorder";
 
+type ButtonSize = "large" | "compact";
+
 interface PushToTalkButtonProps {
   state: RecordingState;
   onPressStart: () => void;
   onPressEnd: () => void;
   disabled?: boolean;
+  size?: ButtonSize;
 }
 
 export function PushToTalkButton({
@@ -14,6 +17,7 @@ export function PushToTalkButton({
   onPressStart,
   onPressEnd,
   disabled = false,
+  size = "large",
 }: PushToTalkButtonProps) {
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
@@ -37,8 +41,12 @@ export function PushToTalkButton({
   };
 
   const getButtonStyles = () => {
+    const sizeStyles = size === "compact"
+      ? "w-20 h-20"
+      : "w-36 h-36";
+
     const baseStyles = `
-      relative w-36 h-36 rounded-full cursor-pointer
+      relative ${sizeStyles} rounded-full cursor-pointer
       transition-all duration-200 ease-out
       flex items-center justify-center
       select-none touch-none
@@ -76,21 +84,21 @@ export function PushToTalkButton({
       {/* Inner circle with icon */}
       <div
         className={`
-          w-28 h-28 rounded-full flex items-center justify-center
+          ${size === "compact" ? "w-14 h-14" : "w-28 h-28"} rounded-full flex items-center justify-center
           transition-all duration-200
           ${state === "recording" ? "bg-red-600" : "bg-zinc-900"}
         `}
       >
         {state === "recording" ? (
           // Recording icon (square)
-          <div className="w-8 h-8 bg-white rounded-md" />
+          <div className={`${size === "compact" ? "w-5 h-5" : "w-8 h-8"} bg-white rounded-md`} />
         ) : state === "processing" ? (
           // Processing icon (dots)
           <div className="flex gap-1">
             {[0, 1, 2].map((i) => (
               <div
                 key={i}
-                className="w-2 h-2 bg-amber-200 rounded-full animate-bounce"
+                className={`${size === "compact" ? "w-1.5 h-1.5" : "w-2 h-2"} bg-amber-200 rounded-full animate-bounce`}
                 style={{ animationDelay: `${i * 100}ms` }}
               />
             ))}
@@ -98,7 +106,7 @@ export function PushToTalkButton({
         ) : state === "speaking" ? (
           // Speaking icon (sound waves)
           <svg
-            className="w-8 h-8 text-emerald-200"
+            className={`${size === "compact" ? "w-5 h-5" : "w-8 h-8"} text-emerald-200`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -113,7 +121,7 @@ export function PushToTalkButton({
         ) : (
           // Idle icon (microphone)
           <svg
-            className="w-8 h-8 text-cyan-200"
+            className={`${size === "compact" ? "w-5 h-5" : "w-8 h-8"} text-cyan-200`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

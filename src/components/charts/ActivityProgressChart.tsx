@@ -81,8 +81,13 @@ export function ActivityProgressChart({
       )}
 
       {/* Chart */}
-      <div className={compact ? "h-40" : "h-56"}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className={compact ? "h-56 w-full min-w-0" : "h-56 w-full min-w-0"}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={0}
+          minHeight={compact ? 224 : 224}
+        >
           <AreaChart data={chartData}>
             <defs>
               <linearGradient id="stepsGradient" x1="0" y1="0" x2="0" y2="1">

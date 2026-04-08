@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextRequest } from "next/server";
 import { SentenceBuffer } from "@/lib/sentenceBuffer";
 import { cleanTeluguTextForTTS } from "@/lib/textCleaner";
@@ -24,6 +24,74 @@ function encodeSSE(data: SSEData): string {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
+// Clean text by removing function call patterns that the model might output
+// Removes patterns like {function_name(arg="value")} or {tool_name(...)}
+function cleanTextFromFunctionCalls(text: string): string {
+  if (!text || typeof text !== "string") {
+    return "";
+  }
+
+  return text
+    .replace(/\{\w+\([^)]*\)\}/g, " ")
+    .replace(/\b(?:get_[a-z_]+|render_[a-z_]+)\([^)]*\)/gi, " ")
+    .replace(/\[(?:tool_name|function_name|tool_code)[^\]]*\]/gi, " ")
+    .trim();
+}
+
+const MAX_VISIBLE_RESPONSE_CHARS = 500;
+
+function normalizeWhitespace(text: string): string {
+  return text.replace(/\s+/g, " ").trim();
+}
+
+function dedupeRepeatedSegments(text: string): string {
+  const segments = text
+    .split(/(?<=[.!?।])/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+
+  const seen = new Set<string>();
+  const uniqueSegments: string[] = [];
+
+  for (const segment of segments) {
+    const key = segment.toLowerCase();
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    uniqueSegments.push(segment);
+  }
+
+  return uniqueSegments.join(" ").trim();
+}
+
+function clipToCompleteThought(text: string, limit = MAX_VISIBLE_RESPONSE_CHARS): string {
+  if (text.length <= limit) {
+    return text;
+  }
+
+  const withinLimit = text.slice(0, limit);
+  const punctuationMatches = [...withinLimit.matchAll(/[.!?।](?=\s|$)/g)];
+  const lastPunctuationIndex = punctuationMatches.at(-1)?.index;
+
+  if (typeof lastPunctuationIndex === "number" && lastPunctuationIndex > limit * 0.6) {
+    return withinLimit.slice(0, lastPunctuationIndex + 1).trim();
+  }
+
+  const lastSpaceIndex = withinLimit.lastIndexOf(" ");
+  if (lastSpaceIndex > limit * 0.7) {
+    return `${withinLimit.slice(0, lastSpaceIndex).trim()}...`;
+  }
+
+  return `${withinLimit.trim()}...`;
+}
+
+function finalizeAssistantReply(text: string): string {
+  const cleaned = normalizeWhitespace(cleanTextFromFunctionCalls(text));
+  const deduped = dedupeRepeatedSegments(cleaned);
+  return clipToCompleteThought(deduped);
+}
+
 // System prompt for neuro rehabilitation companion
 const SYSTEM_PROMPT = `You are Mithra (మిత్ర), a compassionate AI Neuro Rehabilitation Companion.
 
@@ -40,16 +108,9 @@ Key Guidelines:
 - Celebrate milestones and improvements
 - Offer gentle reminders about exercises, medication, or appointments
 - Keep responses conversational, supportive, and in Telugu
-
-IMPORTANT: When a user asks about their progress (e.g., "How is my physiotherapy going?", "Show me my recovery progress", "What about my medication?"):
-1. First call the appropriate get_* tool to fetch the data
-2. Then call render_progress_chart to display the visual chart
-3. Explain the results in an encouraging way in Telugu
-
-Example responses:
-- If they ask about physiotherapy: "Call get_physiotherapy_progress, then render_progress_chart with chartType='physiotherapy'"
-- If they ask about medication: "Call get_medication_adherence, then render_progress_chart with chartType='medication'"
-- If they ask about overall progress: "Call get_patient_overview, then render_progress_chart with chartType='overview'"`;
+- Use tools silently. Never reveal tool names, instructions, JSON, schema text, or planning steps
+- For progress questions, first gather the relevant data, then request the chart, then answer naturally in Telugu
+- Keep every final response complete, concise, and naturally under 500 characters`;
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -167,21 +228,8 @@ export async function POST(request: NextRequest) {
           processNextSentence();
         });
 
-        // Build contents for Gemini - using any for flexibility with function calling
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const contents: any[] = [];
-
-        // Add system instruction as first user message if no history
-        if (conversation.length === 0) {
-          contents.push({
-            role: "user",
-            parts: [{ text: SYSTEM_PROMPT }],
-          });
-          contents.push({
-            role: "model",
-            parts: [{ text: "నేను మీ న్యూరో రిహాబిలిటేషన్ సహాయకుడిని మిత్ర. మీరు తెలుగులో మాట్లాడండి, నేను మీ రికవరీ ప్రోగ్రెస్‌ను చూపించగలను." }],
-          });
-        }
+        // Build Gemini contents for manual tool-calling loop
+        const contents: Array<Record<string, unknown>> = [];
 
         // Add conversation history
         for (const message of conversation) {
@@ -204,163 +252,106 @@ export async function POST(request: NextRequest) {
           ],
         });
 
-        // Stream from Gemini with tools
-        const geminiStream = await ai.models.generateContentStream({
-          model: "gemini-3.1-flash-lite-preview",
-          contents: contents,
-          config: {
-            maxOutputTokens: 300,
-            tools: neuroRehabTools.map((tool) => ({
-              functionDeclarations: [tool],
-            })),
-          },
-        });
+        const toolConfig = neuroRehabTools.map((tool) => ({
+          functionDeclarations: [tool],
+        }));
 
-        // Track function calls that need to be executed
-        const pendingFunctionCalls: Array<{
-          name: string;
-          args: Record<string, unknown>;
-        }> = [];
-
-        // Track if any function calls were made
-        let hasFunctionCalls = false;
-
-        // Process Gemini stream (Turn 1: Get function calls)
-        for await (const chunk of geminiStream) {
-          // Handle text output (rare in first turn, but possible)
-          const text = chunk.text;
-          if (text) {
-            accumulatedText += text;
-            sentenceBuffer.add(text);
-
-            controller.enqueue(
-              encoder.encode(
-                encodeSSE({
-                  type: "text",
-                  text: text,
-                })
-              )
-            );
-          }
-
-          // Handle function calls
-          const functionCalls = chunk.functionCalls;
-          if (functionCalls && functionCalls.length > 0) {
-            hasFunctionCalls = true;
-            
-            for (const call of functionCalls) {
-              console.log(`Function call: ${call.name}`, call.args);
-              
-              try {
-                // Execute the tool
-                const callName = call.name || "unknown";
-                const result = await executeTool({
-                  name: callName,
-                  args: call.args || {},
-                });
-
-                toolResults.push(result);
-
-                // Send tool result to client immediately (renders chart)
-                controller.enqueue(
-                  encoder.encode(
-                    encodeSSE({
-                      type: "tool_result",
-                      toolName: result.toolName,
-                      result: result.result,
-                    })
-                  )
-                );
-
-                // Add function call to conversation context
-                // Note: We're NOT including function calls in the conversation for Turn 2
-                // to avoid thought signature issues. Instead, we'll use a fresh conversation.
-                // Just track that we had function calls.
-                console.log(`Executed: ${call.name}`);
-
-              } catch (error) {
-                console.error(`Tool execution error for ${call.name}:`, error);
-                
-                // Send error as tool result
-                controller.enqueue(
-                  encoder.encode(
-                    encodeSSE({
-                      type: "tool_result",
-                      toolName: call.name,
-                      result: { error: "Failed to execute tool" },
-                    })
-                  )
-                );
-              }
-            }
-          }
-        }
-
-        // If function calls were made, generate explanatory text using a fresh conversation
-        // This avoids thought signature issues by not replaying function call parts
-        if (hasFunctionCalls) {
-          console.log("Function calls executed, generating explanatory text with fresh conversation...");
-          
-          // Build a simple conversation with just the data results (no function call parts)
-          // This avoids the thought signature validation issue
-          const explanationContents: any[] = [];
-          
-          // Add system instruction
-          explanationContents.push({
-            role: "user",
-            parts: [{ text: SYSTEM_PROMPT }],
-          });
-          explanationContents.push({
-            role: "model",
-            parts: [{ text: "నేను మీ న్యూరో రిహాబిలిటేషన్ సహాయకుడిని మిత్ర." }],
-          });
-          
-          // Add the user's original query as text (extract from audio context)
-          explanationContents.push({
-            role: "user",
-            parts: [{ text: "Please review my recovery progress data and explain it to me in Telugu in a warm, encouraging way." }],
-          });
-          
-          // Add the data results as context
-          const toolResultsText = toolResults
-            .filter(tr => tr.toolName.startsWith('get_') || tr.toolName.startsWith('render_'))
-            .map(tr => {
-              const resultStr = JSON.stringify(tr.result, null, 2);
-              return `[${tr.toolName}]: ${resultStr.slice(0, 500)}`;
-            })
-            .join('\n\n');
-          
-          explanationContents.push({
-            role: "model",
-            parts: [{ text: `I've retrieved your progress data:\n\n${toolResultsText}\n\nPlease explain this data in Telugu.` }],
-          });
-          
-          // Create a follow-up stream with a fresh conversation (no thought signatures needed)
-          const followUpStream = await ai.models.generateContentStream({
+        while (true) {
+          const response = await ai.models.generateContent({
             model: "gemini-3.1-flash-lite-preview",
-            contents: explanationContents,
+            contents,
             config: {
-              maxOutputTokens: 300,
+              systemInstruction: SYSTEM_PROMPT,
+              maxOutputTokens: 220,
+              thinkingConfig: {
+                thinkingLevel: ThinkingLevel.MINIMAL,
+              },
+              tools: toolConfig,
             },
           });
 
-          // Stream the explanatory text response
-          for await (const chunk of followUpStream) {
-            const text = chunk.text;
-            if (text) {
-              accumulatedText += text;
-              sentenceBuffer.add(text);
+          const functionCalls = response.functionCalls ?? [];
+          const modelContent = response.candidates?.[0]?.content;
+
+          if (functionCalls.length === 0) {
+            accumulatedText = finalizeAssistantReply(response.text || "");
+            break;
+          }
+
+          if (modelContent) {
+            contents.push(modelContent as unknown as Record<string, unknown>);
+          }
+
+          const functionResponseParts: Array<Record<string, unknown>> = [];
+
+          for (const functionCall of functionCalls) {
+            const callName = functionCall.name || "unknown";
+            console.log(`Function call: ${callName}`, functionCall.args);
+
+            try {
+              const result = await executeTool({
+                name: callName,
+                args: functionCall.args || {},
+              });
+
+              toolResults.push(result);
 
               controller.enqueue(
                 encoder.encode(
                   encodeSSE({
-                    type: "text",
-                    text: text,
+                    type: "tool_result",
+                    toolName: result.toolName,
+                    result: result.result,
                   })
                 )
               );
+
+              functionResponseParts.push({
+                functionResponse: {
+                  name: callName,
+                  response: { result: result.result },
+                },
+              });
+            } catch (error) {
+              console.error(`Tool execution error for ${callName}:`, error);
+
+              const errorResult = { error: "Failed to execute tool" };
+              controller.enqueue(
+                encoder.encode(
+                  encodeSSE({
+                    type: "tool_result",
+                    toolName: callName,
+                    result: errorResult,
+                  })
+                )
+              );
+
+              functionResponseParts.push({
+                functionResponse: {
+                  name: callName,
+                  response: errorResult,
+                },
+              });
             }
           }
+
+          contents.push({
+            role: "user",
+            parts: functionResponseParts,
+          });
+        }
+
+        if (accumulatedText.length > 0) {
+          sentenceBuffer.add(accumulatedText);
+
+          controller.enqueue(
+            encoder.encode(
+              encodeSSE({
+                type: "text",
+                text: accumulatedText,
+              })
+            )
+          );
         }
 
         // Flush remaining buffer
@@ -370,6 +361,8 @@ export async function POST(request: NextRequest) {
         while (ttsIndex < sentenceQueue.length || isProcessingTts) {
           await new Promise((resolve) => setTimeout(resolve, 50));
         }
+
+        accumulatedText = finalizeAssistantReply(accumulatedText);
 
         // Send done signal with final text and all tool results
         controller.enqueue(

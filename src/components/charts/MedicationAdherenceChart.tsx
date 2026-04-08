@@ -87,8 +87,13 @@ export function MedicationAdherenceChart({
       )}
 
       {/* Chart */}
-      <div className={compact ? "h-40" : "h-56"}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className={compact ? "h-56 w-full min-w-0" : "h-56 w-full min-w-0"}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={0}
+          minHeight={compact ? 224 : 224}
+        >
           <BarChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
             <XAxis
@@ -136,7 +141,7 @@ export function MedicationAdherenceChart({
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs justify-center">
+      <div className="flex flex-wrap justify-center gap-4 text-xs">
         <div className="flex items-center gap-1">
           <div
             className="w-3 h-3 rounded"

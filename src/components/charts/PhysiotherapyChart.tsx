@@ -115,8 +115,13 @@ export function PhysiotherapyChart({
       )}
 
       {/* Chart */}
-      <div className={compact ? "h-48" : "h-64"}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className={compact ? "h-64 w-full min-w-0" : "h-64 w-full min-w-0"}>
+        <ResponsiveContainer
+          width="100%"
+          height="100%"
+          minWidth={0}
+          minHeight={compact ? 256 : 256}
+        >
           <LineChart data={formattedData}>
             <defs>
               <linearGradient id="mobilityGradient" x1="0" y1="0" x2="0" y2="1">
@@ -214,7 +219,7 @@ export function PhysiotherapyChart({
       </div>
 
       {/* Legend */}
-      <div className="flex gap-4 text-xs justify-center">
+      <div className="flex flex-wrap justify-center gap-4 text-xs">
         <div className="flex items-center gap-1">
           <div
             className="w-3 h-3 rounded-full"

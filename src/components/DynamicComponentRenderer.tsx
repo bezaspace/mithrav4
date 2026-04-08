@@ -24,9 +24,15 @@ export function DynamicComponentRenderer({
     return null;
   }
 
+  const visibleToolResults = toolResults.some(
+    (tool) => tool.toolName === "render_progress_chart"
+  )
+    ? toolResults.filter((tool) => tool.toolName === "render_progress_chart")
+    : toolResults;
+
   return (
-    <div className="space-y-4 my-4">
-      {toolResults.map((tool, index) => {
+    <div className="my-4 w-full space-y-4">
+      {visibleToolResults.map((tool, index) => {
         // Skip if no result
         if (!tool.result) return null;
 
@@ -42,7 +48,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4 overflow-hidden"
+                className="w-full overflow-hidden rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   {title}
@@ -60,7 +66,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Physiotherapy Summary
@@ -81,7 +87,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Medication Adherence
@@ -101,7 +107,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Diet & Nutrition
@@ -121,7 +127,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Activity & Sleep
@@ -143,7 +149,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Recovery Milestones
@@ -170,7 +176,7 @@ export function DynamicComponentRenderer({
             return (
               <div
                 key={`${tool.toolName}-${index}`}
-                className="bg-zinc-900/70 border border-zinc-700 rounded-xl p-4"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   Patient Overview
