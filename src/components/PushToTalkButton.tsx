@@ -21,7 +21,7 @@ export function PushToTalkButton({
 }: PushToTalkButtonProps) {
   const handlePointerDown = (e: React.PointerEvent) => {
     e.preventDefault();
-    if (!disabled && state === "idle") {
+    if (!disabled && (state === "idle" || state === "speaking")) {
       onPressStart();
     }
   };
@@ -62,7 +62,7 @@ export function PushToTalkButton({
       case "processing":
         return `${baseStyles} bg-amber-500 cursor-wait animate-pulse shadow-[0_0_40px_rgba(245,158,11,0.5)]`;
       case "speaking":
-        return `${baseStyles} bg-emerald-500 cursor-wait shadow-[0_0_40px_rgba(16,185,129,0.5)]`;
+        return `${baseStyles} bg-emerald-500 hover:bg-emerald-400 hover:scale-105 shadow-[0_0_40px_rgba(16,185,129,0.5)]`;
       case "idle":
       default:
         return `${baseStyles} bg-cyan-600 hover:bg-cyan-500 hover:scale-105 shadow-[0_0_30px_rgba(8,145,178,0.4)] active:scale-95`;
@@ -76,9 +76,13 @@ export function PushToTalkButton({
       onPointerUp={handlePointerUp}
       onPointerLeave={handlePointerLeave}
       onPointerCancel={handlePointerUp}
-      disabled={disabled || state === "processing" || state === "speaking"}
+      disabled={disabled || state === "processing"}
       aria-label={
-        state === "recording" ? "Recording... Release to send" : "Push to talk"
+        state === "recording"
+          ? "Recording... Release to send"
+          : state === "speaking"
+          ? "Interrupt AI and speak"
+          : "Push to talk"
       }
     >
       {/* Inner circle with icon */}

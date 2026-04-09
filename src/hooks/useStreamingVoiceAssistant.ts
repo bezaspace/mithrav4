@@ -29,6 +29,7 @@ interface UseStreamingVoiceAssistantReturn {
   setTtsProvider: (provider: TtsProvider) => void;
   toggleTtsProvider: () => void;
   clearConversation: () => void;
+  stopSpeaking: () => void;
   sendAudioToAI: (audioBlob: Blob) => Promise<void>;
 }
 
@@ -44,6 +45,10 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioQueueRef = useRef<PendingAudio[]>([]);
   const isPlayingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
+  const currentGainNodeRef = useRef<GainNode | null>(null);
+  const isInterruptedRef = useRef(false); // Track if user has interrupted
 
   // Initialize AudioContext on user interaction
   const initAudioContext = useCallback(() => {
@@ -84,13 +89,27 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
       // Decode audio (WAV or MP3)
       const audioBuffer = await audioContext.decodeAudioData(byteArray.buffer);
 
-      // Create source and play
+      // Create source and gain node for volume control
       const source = audioContext.createBufferSource();
+      const gainNode = audioContext.createGain();
+      
       source.buffer = audioBuffer;
-      source.connect(audioContext.destination);
+      source.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      // Set initial volume to 1
+      gainNode.gain.setValueAtTime(1, audioContext.currentTime);
+      
+      // Store references so we can control them
+      currentAudioSourceRef.current = source;
+      currentGainNodeRef.current = gainNode;
 
       return new Promise((resolve) => {
-        source.onended = () => resolve();
+        source.onended = () => {
+          currentAudioSourceRef.current = null;
+          currentGainNodeRef.current = null;
+          resolve();
+        };
         source.start(0);
       });
     } catch (err) {
@@ -129,11 +148,84 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
   // Queue audio for playback
   const queueAudio = useCallback(
     (audioData: PendingAudio) => {
+      // If interrupted, don't queue any new audio from old stream
+      if (isInterruptedRef.current) {
+        console.log("[Interruption] Blocking audio from old stream");
+        return;
+      }
       audioQueueRef.current.push(audioData);
       processAudioQueue();
     },
     [processAudioQueue]
   );
+
+  // Stop speaking - interrupt current AI response with moderate fade-out
+  const stopSpeaking = useCallback(() => {
+    // Set interruption flag to block any audio from old stream
+    isInterruptedRef.current = true;
+    console.log("[Interruption] User interrupted AI");
+
+    // Abort any ongoing fetch request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+
+    // Moderate fade-out duration (500ms)
+    const FADE_OUT_DURATION = 0.5;
+
+    // Apply fade-out to currently playing audio before stopping
+    if (currentGainNodeRef.current && audioContextRef.current) {
+      const gainNode = currentGainNodeRef.current;
+      const audioContext = audioContextRef.current;
+      
+      try {
+        // Smoothly ramp volume to 0 over the fade-out duration
+        const currentTime = audioContext.currentTime;
+        gainNode.gain.setValueAtTime(gainNode.gain.value, currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, currentTime + FADE_OUT_DURATION);
+        
+        // Stop the audio source after fade-out completes
+        if (currentAudioSourceRef.current) {
+          const source = currentAudioSourceRef.current;
+          source.stop(currentTime + FADE_OUT_DURATION + 0.01);
+        }
+      } catch (e) {
+        // If fade-out fails, stop immediately
+        if (currentAudioSourceRef.current) {
+          try {
+            currentAudioSourceRef.current.stop();
+          } catch (err) {
+            // Ignore errors if already stopped
+          }
+        }
+      }
+    } else if (currentAudioSourceRef.current) {
+      // Fallback: stop immediately if no gain node
+      try {
+        currentAudioSourceRef.current.stop();
+      } catch (e) {
+        // Ignore errors if already stopped
+      }
+    }
+
+    // Clear references after a short delay to let fade-out complete
+    setTimeout(() => {
+      currentAudioSourceRef.current = null;
+      currentGainNodeRef.current = null;
+    }, FADE_OUT_DURATION * 1000);
+
+    // Clear audio queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
+
+    // Reset state
+    setIsStreaming(false);
+    setIsProcessing(false);
+    setCurrentStreamingText("");
+    setCurrentToolResults([]); // Clear old charts when interrupting
+    setError(null);
+  }, []);
 
   const clearConversation = useCallback(() => {
     setConversation([]);
@@ -144,6 +236,10 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
   const sendAudioToAI = useCallback(
     async (audioBlob: Blob): Promise<void> => {
       try {
+        // Clear interruption flag so new audio can be queued and played
+        isInterruptedRef.current = false;
+        console.log("[Interruption] Starting new request, flag cleared");
+
         setError(null);
         setIsProcessing(true);
         setIsStreaming(true);
@@ -151,6 +247,9 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         setCurrentToolResults([]);
 
         initAudioContext();
+
+        // Create abort controller for this request
+        abortControllerRef.current = new AbortController();
 
         // Create form data with audio, conversation history, and TTS provider
         const formData = new FormData();
@@ -162,6 +261,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         const response = await fetch("/api/chat-stream", {
           method: "POST",
           body: formData,
+          signal: abortControllerRef.current.signal,
         });
 
         if (!response.ok) {
@@ -236,26 +336,33 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
                     setIsStreaming(false);
                     setIsProcessing(false);
 
-                    // Add to conversation history with tool results
-                    setConversation((prev) => [
-                      ...prev,
-                      {
-                        role: "user",
-                        text: "[Voice input]",
-                        timestamp: Date.now(),
-                      },
-                      {
-                        role: "model",
-                        text: data.text || fullText,
-                        timestamp: Date.now(),
-                        toolResults: accumulatedToolResults.length > 0 
-                          ? [...accumulatedToolResults] 
-                          : undefined,
-                      },
-                    ]);
+                    // Only add to conversation history if NOT interrupted
+                    // (if interrupted, we don't want incomplete responses in history)
+                    if (!isInterruptedRef.current) {
+                      // Add to conversation history with tool results
+                      setConversation((prev) => [
+                        ...prev,
+                        {
+                          role: "user",
+                          text: "[Voice input]",
+                          timestamp: Date.now(),
+                        },
+                        {
+                          role: "model",
+                          text: data.text || fullText,
+                          timestamp: Date.now(),
+                          toolResults: accumulatedToolResults.length > 0 
+                            ? [...accumulatedToolResults] 
+                            : undefined,
+                        },
+                      ]);
+                    } else {
+                      console.log("[Interruption] Skipping incomplete response in history");
+                    }
                     
-                    // Clear current tool results for next message
-                    setCurrentToolResults([]);
+                    // Note: currentToolResults are NOT cleared here - they persist
+                    // until the user asks a new question or interrupts
+                    // They get cleared in sendAudioToAI and stopSpeaking instead
                     setCurrentStreamingText("");
                     break;
                 }
@@ -266,12 +373,20 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
           }
         }
       } catch (err) {
+        // Don't show error if it was aborted intentionally
+        if (err instanceof Error && err.name === "AbortError") {
+          console.log("Stream aborted");
+          return;
+        }
+        
         console.error("Error in streaming:", err);
         setError(err instanceof Error ? err.message : "Streaming failed");
         setIsStreaming(false);
         setIsProcessing(false);
         setCurrentStreamingText("");
         setCurrentToolResults([]);
+      } finally {
+        abortControllerRef.current = null;
       }
     },
     [conversation, initAudioContext, queueAudio, ttsProvider]
@@ -288,6 +403,7 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
     setTtsProvider,
     toggleTtsProvider,
     clearConversation,
+    stopSpeaking,
     sendAudioToAI,
   };
 }

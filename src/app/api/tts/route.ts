@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         text: truncatedText,
         target_language_code: "te-IN", // Telugu language
-        speaker: "shubh",
+        speaker: "Ishita",
         model: "bulbul:v3",
         pace: 1.0,
         speech_sample_rate: "24000",
