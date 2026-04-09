@@ -2,99 +2,55 @@ import { Type, type FunctionDeclaration } from "@google/genai";
 
 export const neuroRehabTools: FunctionDeclaration[] = [
   {
-    name: "get_patient_overview",
-    description: "Get patient's current status including name, age, surgery type, recovery stage, and overall progress percentage",
+    name: "get_patient_profile",
+    description: "Get patient's clinical profile including name, diagnosis, surgeon, rehab plan, and next assessment date",
     parameters: {
       type: Type.OBJECT,
       properties: {},
     },
   },
   {
-    name: "get_physiotherapy_progress",
-    description: "Fetch physiotherapy session data including mobility scores (0-100), pain levels (0-10), exercise completion, and session duration",
+    name: "get_recovery_trajectory",
+    description: "Fetch recovery trajectory data showing cognitive, physical, and speech scores over the past week",
     parameters: {
       type: Type.OBJECT,
-      properties: {
-        days: {
-          type: Type.NUMBER,
-          description: "Number of days of history to retrieve (default: 30)",
-        },
-      },
+      properties: {},
     },
   },
   {
-    name: "get_medication_adherence",
-    description: "Get medication adherence statistics showing percentage of medications taken on time",
+    name: "get_therapy_allocation",
+    description: "Get therapy time allocation showing percentage breakdown of physiotherapy, speech therapy, cognitive games, and rest",
     parameters: {
       type: Type.OBJECT,
-      properties: {
-        days: {
-          type: Type.NUMBER,
-          description: "Number of days of history",
-        },
-      },
+      properties: {},
     },
   },
   {
-    name: "get_diet_adherence",
-    description: "Fetch diet and nutrition adherence data including calories consumed and hydration levels",
+    name: "get_recovery_scores",
+    description: "Get current recovery scores across cognitive, physical, diet, medication, and sleep categories",
     parameters: {
       type: Type.OBJECT,
-      properties: {
-        days: {
-          type: Type.NUMBER,
-          description: "Number of days of history",
-        },
-      },
+      properties: {},
     },
   },
   {
-    name: "get_activity_progress",
-    description: "Get daily activity data including steps, active minutes, and sleep quality",
+    name: "get_daily_schedule",
+    description: "Get today's schedule with all activities, times, experts, and detailed instructions",
     parameters: {
       type: Type.OBJECT,
-      properties: {
-        days: {
-          type: Type.NUMBER,
-          description: "Number of days of history",
-        },
-      },
-    },
-  },
-  {
-    name: "get_recovery_milestones",
-    description: "Get list of recovery milestones and their achievement status (completed or pending)",
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        category: {
-          type: Type.STRING,
-          enum: ["Mobility", "ADL", "Cognitive", "Recovery", "Independence", "All"],
-          description: "Filter milestones by category",
-        },
-      },
+      properties: {},
     },
   },
   {
     name: "render_progress_chart",
-    description: "Request to render a specific interactive chart component in the chat UI to visualize patient progress. Use this when the user asks to see their progress visually or when you want to show them a chart alongside your explanation.",
+    description: "Request to render a specific interactive chart component in the chat UI to visualize patient progress. Use this when the user asks about their progress, wants to see their scores, or when you want to show them a chart alongside your explanation.",
     parameters: {
       type: Type.OBJECT,
       properties: {
         chartType: {
           type: Type.STRING,
-          enum: ["physiotherapy", "medication", "diet", "activity", "milestones", "overview"],
-          description: "Type of progress chart to display",
-        },
-        metric: {
-          type: Type.STRING,
-          enum: ["mobility_score", "pain_level", "exercise_completion", "adherence", "steps", "all"],
-          description: "Specific metric to highlight in the chart",
-        },
-        timeRange: {
-          type: Type.STRING,
-          enum: ["7days", "30days", "90days", "all"],
-          description: "Time period to show in the chart",
+          enum: ["recovery_trajectory", "therapy_allocation", "recovery_scores", "daily_schedule", "clinical_profile"],
+          description: "Type of chart to display",
         },
         title: {
           type: Type.STRING,

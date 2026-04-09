@@ -1,10 +1,9 @@
 import {
-  executeGetPatientOverview,
-  executeGetPhysiotherapyProgress,
-  executeGetMedicationAdherence,
-  executeGetDietAdherence,
-  executeGetActivityProgress,
-  executeGetRecoveryMilestones,
+  executeGetPatientProfile,
+  executeGetRecoveryTrajectory,
+  executeGetTherapyAllocation,
+  executeGetRecoveryScores,
+  executeGetDailySchedule,
 } from "./executors";
 
 export interface ToolCall {
@@ -22,72 +21,51 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
   const { name, args } = call;
 
   switch (name) {
-    case "get_patient_overview": {
-      const result = await executeGetPatientOverview();
+    case "get_patient_profile": {
+      const result = await executeGetPatientProfile();
       return { toolName: name, result, isChart: false };
     }
 
-    case "get_physiotherapy_progress": {
-      const days = (args.days as number) || 30;
-      const result = await executeGetPhysiotherapyProgress(days);
+    case "get_recovery_trajectory": {
+      const result = await executeGetRecoveryTrajectory();
       return { toolName: name, result, isChart: false };
     }
 
-    case "get_medication_adherence": {
-      const days = (args.days as number) || 30;
-      const result = await executeGetMedicationAdherence(days);
+    case "get_therapy_allocation": {
+      const result = await executeGetTherapyAllocation();
       return { toolName: name, result, isChart: false };
     }
 
-    case "get_diet_adherence": {
-      const days = (args.days as number) || 30;
-      const result = await executeGetDietAdherence(days);
+    case "get_recovery_scores": {
+      const result = await executeGetRecoveryScores();
       return { toolName: name, result, isChart: false };
     }
 
-    case "get_activity_progress": {
-      const days = (args.days as number) || 30;
-      const result = await executeGetActivityProgress(days);
-      return { toolName: name, result, isChart: false };
-    }
-
-    case "get_recovery_milestones": {
-      const category = (args.category as string) || "All";
-      const result = await executeGetRecoveryMilestones(category);
+    case "get_daily_schedule": {
+      const result = await executeGetDailySchedule();
       return { toolName: name, result, isChart: false };
     }
 
     case "render_progress_chart": {
-      // For render_progress_chart, we need to first fetch the data
-      // and then return a structured result that tells the UI what to render
       const chartType = args.chartType as string;
-      const metric = (args.metric as string) || "all";
-      const timeRange = (args.timeRange as string) || "30days";
       const title = (args.title as string) || getDefaultChartTitle(chartType);
 
-      // Parse time range
-      const days = parseTimeRange(timeRange);
-
-      // Fetch appropriate data based on chart type
       let chartData: unknown;
       switch (chartType) {
-        case "physiotherapy":
-          chartData = await executeGetPhysiotherapyProgress(days);
+        case "recovery_trajectory":
+          chartData = await executeGetRecoveryTrajectory();
           break;
-        case "medication":
-          chartData = await executeGetMedicationAdherence(days);
+        case "therapy_allocation":
+          chartData = await executeGetTherapyAllocation();
           break;
-        case "diet":
-          chartData = await executeGetDietAdherence(days);
+        case "recovery_scores":
+          chartData = await executeGetRecoveryScores();
           break;
-        case "activity":
-          chartData = await executeGetActivityProgress(days);
+        case "daily_schedule":
+          chartData = await executeGetDailySchedule();
           break;
-        case "milestones":
-          chartData = await executeGetRecoveryMilestones("All");
-          break;
-        case "overview":
-          chartData = await executeGetPatientOverview();
+        case "clinical_profile":
+          chartData = await executeGetPatientProfile();
           break;
         default:
           chartData = {};
@@ -97,8 +75,6 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
         toolName: name,
         result: {
           chartType,
-          metric,
-          timeRange,
           title,
           data: chartData,
         },
@@ -111,29 +87,13 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
   }
 }
 
-function parseTimeRange(timeRange: string): number {
-  switch (timeRange) {
-    case "7days":
-      return 7;
-    case "30days":
-      return 30;
-    case "90days":
-      return 90;
-    case "all":
-      return 365; // Maximum range
-    default:
-      return 30;
-  }
-}
-
 function getDefaultChartTitle(chartType: string): string {
   const titles: Record<string, string> = {
-    physiotherapy: "Physiotherapy Progress",
-    medication: "Medication Adherence",
-    diet: "Diet & Hydration",
-    activity: "Daily Activity & Sleep",
-    milestones: "Recovery Milestones",
-    overview: "Recovery Overview",
+    recovery_trajectory: "Recovery Trajectory",
+    therapy_allocation: "Therapy Allocation",
+    recovery_scores: "Recovery Scores",
+    daily_schedule: "Today's Schedule",
+    clinical_profile: "Clinical Profile",
   };
   return titles[chartType] || "Progress Chart";
 }

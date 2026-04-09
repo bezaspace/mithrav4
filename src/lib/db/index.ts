@@ -116,6 +116,44 @@ function initializeDatabase() {
     )
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS recovery_trajectory (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      day TEXT NOT NULL,
+      cognitive INTEGER,
+      physical INTEGER,
+      speech INTEGER
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS therapy_allocation (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      value INTEGER
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS schedule (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      time TEXT NOT NULL,
+      title TEXT NOT NULL,
+      expert TEXT,
+      type TEXT,
+      instructions TEXT
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      value INTEGER,
+      fill TEXT
+    )
+  `);
+
   insertMockData();
 }
 
@@ -256,6 +294,63 @@ function insertMockData() {
   milestonesStmt.run('Cook simple meal', '2024-03-15', null, 'ADL', 'Prepare breakfast independently');
   milestonesStmt.run('Drive again', '2024-06-01', null, 'Independence', 'Doctor clearance for driving');
   milestonesStmt.run('Full recovery', '2024-04-15', null, 'Recovery', 'Complete normal activities');
+
+  // Seed recovery trajectory
+  const trajectoryStmt = db.prepare(`
+    INSERT INTO recovery_trajectory (day, cognitive, physical, speech)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  days.forEach((day, idx) => {
+    trajectoryStmt.run(day, 60 + idx * 3 + Math.floor(Math.random() * 5), 40 + idx * 4 + Math.floor(Math.random() * 5), 50 + idx * 2);
+  });
+
+  // Seed therapy allocation
+  const therapyStmt = db.prepare(`
+    INSERT INTO therapy_allocation (name, value)
+    VALUES (?, ?)
+  `);
+
+  const therapies = [
+    { name: 'Physiotherapy', value: 45 },
+    { name: 'Speech Therapy', value: 25 },
+    { name: 'Cognitive Games', value: 20 },
+    { name: 'Rest & Recovery', value: 10 }
+  ];
+  therapies.forEach(t => therapyStmt.run(t.name, t.value));
+
+  // Seed schedule
+  const scheduleStmt = db.prepare(`
+    INSERT INTO schedule (time, title, expert, type, instructions)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const scheduleItems = [
+    { time: '08:00 AM', title: 'Morning Medication', expert: 'Self-Administered', type: 'Medication', instructions: 'Take 1x Gabapentin (300mg) for nerve pain and 1x Multivitamin. Take with a full glass of water. Do not take on an empty stomach.' },
+    { time: '09:00 AM', title: 'Occupational Therapy', expert: 'Dr. James Chen', type: 'Physical', instructions: 'Focus on fine motor skills. 15 minutes of pegboard exercises, 10 minutes of handwriting practice. Maintain upright posture.' },
+    { time: '11:00 AM', title: 'Home Therapy: Stretching', expert: 'Self-Guided', type: 'Home Therapy', instructions: 'Neck rotations (10 reps each side), Shoulder shrugs (3 sets of 15), Wrist flexor stretch (30 seconds each). Move slowly and breathe deeply.' },
+    { time: '01:00 PM', title: 'Neuro-Recovery Diet', expert: 'Nutritionist', type: 'Diet', instructions: 'High Omega-3 lunch: Grilled salmon (150g), steamed broccoli, and walnuts. Avoid processed sugars. Stay hydrated with 500ml water.' },
+    { time: '03:00 PM', title: 'Elastic Band Work', expert: 'Self-Guided', type: 'Home Therapy', instructions: 'Bicep curls with yellow band (3 sets of 12), Lateral raises (2 sets of 10). Focus on controlled movements. Rest 60s between sets.' },
+    { time: '04:30 PM', title: 'AI Companion Chat', expert: 'Zephyr AI', type: 'Support', instructions: 'Discuss today\'s progress, any discomfort felt during exercises, and review tomorrow\'s goals.' },
+    { time: '08:00 PM', title: 'Evening Medication', expert: 'Self-Administered', type: 'Medication', instructions: 'Take 1x Magnesium glycinate (200mg) for muscle relaxation. Avoid blue light 1 hour after taking.' }
+  ];
+  scheduleItems.forEach(item => scheduleStmt.run(item.time, item.title, item.expert, item.type, item.instructions));
+
+  // Seed scores
+  const scoresStmt = db.prepare(`
+    INSERT INTO scores (name, value, fill)
+    VALUES (?, ?, ?)
+  `);
+
+  const scores = [
+    { name: 'Cognitive', value: 82, fill: '#8b5cf6' },
+    { name: 'Physical', value: 58, fill: '#3b82f6' },
+    { name: 'Diet', value: 90, fill: '#10b981' },
+    { name: 'Medication', value: 100, fill: '#f59e0b' },
+    { name: 'Sleep', value: 75, fill: '#ec4899' }
+  ];
+  scores.forEach(s => scoresStmt.run(s.name, s.value, s.fill));
 }
 
 export function closeDatabase() {

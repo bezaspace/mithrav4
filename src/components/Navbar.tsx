@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { MessageSquare, LayoutDashboard, Brain } from 'lucide-react';
 
 export default function Navbar() {
   const pathname = usePathname();
 
   const navItems = [
-    { href: '/', label: 'Voice Assistant', icon: '🎙️' },
-    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { href: '/', label: 'AI Companion', icon: MessageSquare },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   ];
 
   return (
@@ -16,26 +17,29 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🧠</span>
-            <span className="font-semibold text-lg hidden sm:block">NeuroRehab</span>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg shadow-blue-900/20">
+              <Brain className="text-white w-5 h-5" />
+            </div>
+            <span className="font-bold text-lg tracking-tight hidden sm:block text-neutral-100">NeuroCompanion</span>
           </div>
 
           {/* Navigation Links */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
+              const Icon = item.icon;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center gap-3 px-5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                     isActive
-                      ? 'bg-[#0891B2]/20 text-[#0891B2]'
-                      : 'text-zinc-400 hover:text-[#ededed] hover:bg-zinc-800/50'
+                      ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/20'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50'
                   }`}
                 >
-                  <span>{item.icon}</span>
+                  <Icon size={18} />
                   <span className="hidden sm:inline">{item.label}</span>
                 </Link>
               );

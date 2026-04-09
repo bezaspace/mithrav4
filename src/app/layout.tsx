@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Voice Assistant",
-  description: "AI-powered voice assistant with push-to-talk",
+  title: "NeuroCompanion",
+  description: "AI-powered neuro-rehabilitation companion with voice assistant and recovery dashboard",
 };
 
 export default function RootLayout({

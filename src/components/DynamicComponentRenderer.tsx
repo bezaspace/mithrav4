@@ -1,11 +1,10 @@
 "use client";
 
-import { PhysiotherapyChart } from "./charts/PhysiotherapyChart";
-import { MedicationAdherenceChart } from "./charts/MedicationAdherenceChart";
-import { DietAdherenceChart } from "./charts/DietAdherenceChart";
-import { ActivityProgressChart } from "./charts/ActivityProgressChart";
-import { MilestonesChart } from "./charts/MilestonesChart";
-import { PatientOverviewCard } from "./charts/PatientOverviewCard";
+import { RecoveryTrajectoryChart } from "./charts/RecoveryTrajectoryChart";
+import { TherapyAllocationChart } from "./charts/TherapyAllocationChart";
+import { RecoveryScoresChart } from "./charts/RecoveryScoresChart";
+import { DailyScheduleChart } from "./charts/DailyScheduleChart";
+import { ClinicalProfileCard } from "./charts/ClinicalProfileCard";
 
 export interface ToolResult {
   toolName: string;
@@ -33,7 +32,6 @@ export function DynamicComponentRenderer({
   return (
     <div className="my-4 w-full space-y-4">
       {visibleToolResults.map((tool, index) => {
-        // Skip if no result
         if (!tool.result) return null;
 
         const result = tool.result as Record<string, unknown>;
@@ -43,7 +41,6 @@ export function DynamicComponentRenderer({
             const chartType = result.chartType as string;
             const data = result.data as Record<string, unknown>;
             const title = (result.title as string) || getDefaultTitle(chartType);
-            const metric = (result.metric as string) || "all";
 
             return (
               <div
@@ -53,135 +50,77 @@ export function DynamicComponentRenderer({
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
                   {title}
                 </h4>
-                {renderChart(chartType, data, metric, true)}
+                {renderChart(chartType, data, true)}
               </div>
             );
           }
 
-          case "get_physiotherapy_progress": {
-            const physioData = result as {
-              data: unknown[];
-              summary?: Record<string, unknown>;
-            };
+          case "get_recovery_trajectory": {
             return (
               <div
                 key={`${tool.toolName}-${index}`}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Physiotherapy Summary
+                  Recovery Trajectory
                 </h4>
-                <PhysiotherapyChart data={physioData as Parameters<typeof PhysiotherapyChart>[0]['data']} compact />
+                <RecoveryTrajectoryChart data={result as Parameters<typeof RecoveryTrajectoryChart>[0]['data']} compact />
               </div>
             );
           }
 
-          case "get_medication_adherence": {
-            const medData = result as {
-              adherencePercent: number;
-              totalDoses: number;
-              takenDoses: number;
-              missedDoses: number;
-              data: unknown[];
-            };
+          case "get_therapy_allocation": {
             return (
               <div
                 key={`${tool.toolName}-${index}`}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Medication Adherence
+                  Therapy Allocation
                 </h4>
-                <MedicationAdherenceChart data={medData as Parameters<typeof MedicationAdherenceChart>[0]['data']} compact />
+                <TherapyAllocationChart data={result as Parameters<typeof TherapyAllocationChart>[0]['data']} compact />
               </div>
             );
           }
 
-          case "get_diet_adherence": {
-            const dietData = result as {
-              avgCalories: number;
-              avgHydration: number;
-              avgAdherence: number;
-              data: unknown[];
-            };
+          case "get_recovery_scores": {
             return (
               <div
                 key={`${tool.toolName}-${index}`}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Diet & Nutrition
+                  Recovery Scores
                 </h4>
-                <DietAdherenceChart data={dietData as Parameters<typeof DietAdherenceChart>[0]['data']} compact />
+                <RecoveryScoresChart data={result as Parameters<typeof RecoveryScoresChart>[0]['data']} compact />
               </div>
             );
           }
 
-          case "get_activity_progress": {
-            const activityData = result as {
-              avgSteps: number;
-              avgActiveMinutes: number;
-              avgSleepQuality: number;
-              data: unknown[];
-            };
+          case "get_daily_schedule": {
             return (
               <div
                 key={`${tool.toolName}-${index}`}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Activity & Sleep
+                  Today's Schedule
                 </h4>
-                <ActivityProgressChart data={activityData as Parameters<typeof ActivityProgressChart>[0]['data']} compact />
+                <DailyScheduleChart data={result as Parameters<typeof DailyScheduleChart>[0]['data']} compact />
               </div>
             );
           }
 
-          case "get_recovery_milestones": {
-            const milestonesData = result as {
-              milestones: unknown[];
-              summary: {
-                completed: number;
-                pending: number;
-                completionPercent: number;
-              };
-            };
+          case "get_patient_profile": {
             return (
               <div
                 key={`${tool.toolName}-${index}`}
                 className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
               >
                 <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Recovery Milestones
+                  Clinical Profile
                 </h4>
-                <MilestonesChart data={milestonesData as Parameters<typeof MilestonesChart>[0]['data']} compact />
-              </div>
-            );
-          }
-
-          case "get_patient_overview": {
-            const patientData = result as {
-              name: string;
-              age: number;
-              surgery_type: string;
-              surgery_date: string;
-              discharge_date: string;
-              recovery_stage: number;
-              target_recovery_days: number;
-              days_since_surgery: number;
-              days_since_discharge: number;
-              daysRemaining: number;
-              progressPercent: number;
-            };
-            return (
-              <div
-                key={`${tool.toolName}-${index}`}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
-              >
-                <h4 className="text-sm font-semibold text-zinc-200 mb-3">
-                  Patient Overview
-                </h4>
-                <PatientOverviewCard data={patientData} />
+                <ClinicalProfileCard data={result as Parameters<typeof ClinicalProfileCard>[0]['data']} compact />
               </div>
             );
           }
@@ -197,55 +136,46 @@ export function DynamicComponentRenderer({
 function renderChart(
   chartType: string,
   data: Record<string, unknown>,
-  metric: string,
   compact: boolean
 ) {
   switch (chartType) {
-    case "physiotherapy":
+    case "recovery_trajectory":
       return (
-        <PhysiotherapyChart
-          data={data as Parameters<typeof PhysiotherapyChart>[0]['data']}
-          highlightMetric={metric}
+        <RecoveryTrajectoryChart
+          data={data as Parameters<typeof RecoveryTrajectoryChart>[0]['data']}
           compact={compact}
         />
       );
 
-    case "medication":
+    case "therapy_allocation":
       return (
-        <MedicationAdherenceChart
-          data={data as Parameters<typeof MedicationAdherenceChart>[0]['data']}
+        <TherapyAllocationChart
+          data={data as Parameters<typeof TherapyAllocationChart>[0]['data']}
           compact={compact}
         />
       );
 
-    case "diet":
+    case "recovery_scores":
       return (
-        <DietAdherenceChart
-          data={data as Parameters<typeof DietAdherenceChart>[0]['data']}
+        <RecoveryScoresChart
+          data={data as Parameters<typeof RecoveryScoresChart>[0]['data']}
           compact={compact}
         />
       );
 
-    case "activity":
+    case "daily_schedule":
       return (
-        <ActivityProgressChart
-          data={data as Parameters<typeof ActivityProgressChart>[0]['data']}
+        <DailyScheduleChart
+          data={data as Parameters<typeof DailyScheduleChart>[0]['data']}
           compact={compact}
         />
       );
 
-    case "milestones":
+    case "clinical_profile":
       return (
-        <MilestonesChart
-          data={data as Parameters<typeof MilestonesChart>[0]['data']}
+        <ClinicalProfileCard
+          data={data as Parameters<typeof ClinicalProfileCard>[0]['data']}
           compact={compact}
-        />
-      );
-
-    case "overview":
-      return (
-        <PatientOverviewCard
-          data={data as Parameters<typeof PatientOverviewCard>[0]['data']}
         />
       );
 
@@ -258,12 +188,11 @@ function renderChart(
 
 function getDefaultTitle(chartType: string): string {
   const titles: Record<string, string> = {
-    physiotherapy: "Physiotherapy Progress",
-    medication: "Medication Adherence",
-    diet: "Diet & Hydration",
-    activity: "Daily Activity & Sleep",
-    milestones: "Recovery Milestones",
-    overview: "Recovery Overview",
+    recovery_trajectory: "Recovery Trajectory",
+    therapy_allocation: "Therapy Allocation",
+    recovery_scores: "Recovery Scores",
+    daily_schedule: "Today's Schedule",
+    clinical_profile: "Clinical Profile",
   };
   return titles[chartType] || "Progress Chart";
 }
