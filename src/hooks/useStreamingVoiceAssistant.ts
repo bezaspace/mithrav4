@@ -33,7 +33,7 @@ interface UseStreamingVoiceAssistantReturn {
   sendAudioToAI: (audioBlob: Blob) => Promise<void>;
 }
 
-export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
+export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoiceAssistantReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -251,11 +251,14 @@ export function useStreamingVoiceAssistant(): UseStreamingVoiceAssistantReturn {
         // Create abort controller for this request
         abortControllerRef.current = new AbortController();
 
-        // Create form data with audio, conversation history, and TTS provider
+        // Create form data with audio, conversation history, TTS provider, and patient ID
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.webm");
         formData.append("conversation", JSON.stringify(conversation));
         formData.append("ttsProvider", ttsProvider);
+        if (patientId) {
+          formData.append("patientId", patientId.toString());
+        }
 
         // Send to streaming API
         const response = await fetch("/api/chat-stream", {

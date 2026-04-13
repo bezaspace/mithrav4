@@ -8,6 +8,7 @@ import { TtsToggle } from "@/components/TtsToggle";
 import { DynamicComponentRenderer } from "@/components/DynamicComponentRenderer";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useStreamingVoiceAssistant } from "@/hooks/useStreamingVoiceAssistant";
+import { usePatient } from "@/context/PatientContext";
 
 export default function VoiceAssistantPage() {
   const {
@@ -17,6 +18,8 @@ export default function VoiceAssistantPage() {
     setRecordingState,
     error: recorderError,
   } = useAudioRecorder();
+
+  const { selectedPatientId } = usePatient();
 
   const {
     isStreaming,
@@ -28,7 +31,7 @@ export default function VoiceAssistantPage() {
     toggleTtsProvider,
     stopSpeaking,
     sendAudioToAI,
-  } = useStreamingVoiceAssistant();
+  } = useStreamingVoiceAssistant(selectedPatientId ?? undefined);
 
   const handlePressStart = useCallback(async () => {
     // If AI is currently speaking, interrupt and stop

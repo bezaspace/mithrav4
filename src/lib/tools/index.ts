@@ -17,32 +17,32 @@ export interface ToolResult {
   isChart: boolean;
 }
 
-export async function executeTool(call: ToolCall): Promise<ToolResult> {
+export async function executeTool(call: ToolCall, patientId?: number): Promise<ToolResult> {
   const { name, args } = call;
 
   switch (name) {
     case "get_patient_profile": {
-      const result = await executeGetPatientProfile();
+      const result = await executeGetPatientProfile(patientId);
       return { toolName: name, result, isChart: false };
     }
 
     case "get_recovery_trajectory": {
-      const result = await executeGetRecoveryTrajectory();
+      const result = await executeGetRecoveryTrajectory(patientId);
       return { toolName: name, result, isChart: false };
     }
 
     case "get_therapy_allocation": {
-      const result = await executeGetTherapyAllocation();
+      const result = await executeGetTherapyAllocation(patientId);
       return { toolName: name, result, isChart: false };
     }
 
     case "get_recovery_scores": {
-      const result = await executeGetRecoveryScores();
+      const result = await executeGetRecoveryScores(patientId);
       return { toolName: name, result, isChart: false };
     }
 
     case "get_daily_schedule": {
-      const result = await executeGetDailySchedule();
+      const result = await executeGetDailySchedule(patientId);
       return { toolName: name, result, isChart: false };
     }
 
@@ -53,19 +53,19 @@ export async function executeTool(call: ToolCall): Promise<ToolResult> {
       let chartData: unknown;
       switch (chartType) {
         case "recovery_trajectory":
-          chartData = await executeGetRecoveryTrajectory();
+          chartData = await executeGetRecoveryTrajectory(patientId);
           break;
         case "therapy_allocation":
-          chartData = await executeGetTherapyAllocation();
+          chartData = await executeGetTherapyAllocation(patientId);
           break;
         case "recovery_scores":
-          chartData = await executeGetRecoveryScores();
+          chartData = await executeGetRecoveryScores(patientId);
           break;
         case "daily_schedule":
-          chartData = await executeGetDailySchedule();
+          chartData = await executeGetDailySchedule(patientId);
           break;
         case "clinical_profile":
-          chartData = await executeGetPatientProfile();
+          chartData = await executeGetPatientProfile(patientId);
           break;
         default:
           chartData = {};

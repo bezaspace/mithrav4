@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { 
-  StatsGrid, RecoveryTrajectory, TherapyAllocation, 
-  ClinicalProfile, ScheduleList, RadialScoreChart 
+import { usePatient } from '@/context/PatientContext';
+import { useRouter } from 'next/navigation';
+import {
+  StatsGrid, RecoveryTrajectory, TherapyAllocation,
+  ClinicalProfile, ScheduleList, RadialScoreChart, PainIndexChart
 } from '@/components/DashboardWidgets';
 import { User, LayoutGrid, BarChart3, ClipboardList, CalendarDays } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,10 +48,24 @@ interface DashboardData {
     value: number;
     fill: string;
   }>;
+  painIndex: Array<{
+    date: string;
+    pain_level: number;
+  }>;
 }
 
-export default function DashboardPage({ data }: { data: DashboardData }) {
+interface Patient {
+  id: number;
+  name: string;
+  age: number;
+  surgery_type: string;
+  recovery_stage: number;
+}
+
+export default function DashboardPage({ data, patients, selectedPatientId }: { data: DashboardData; patients: Patient[]; selectedPatientId: number }) {
   const [activeSubPage, setActiveSubPage] = useState<SubPage>('overview');
+  const { selectedPatient, setSelectedPatient } = usePatient();
+  const router = useRouter();
 
   const subPages = [
     { id: 'overview' as const, label: 'Overview', icon: LayoutGrid },
@@ -66,13 +82,16 @@ export default function DashboardPage({ data }: { data: DashboardData }) {
           <h1 className="text-3xl font-bold text-neutral-100 tracking-tight">Recovery Dashboard</h1>
           <p className="text-neutral-500">{data.diagnosis} Phase 2</p>
         </div>
-        <div className="flex items-center gap-4 bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800">
-          <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-            <User className="text-blue-400 w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-neutral-200">{data.name}</p>
-            <p className="text-xs text-neutral-500">Patient ID: {data.id}</p>
+        <div className="flex items-center gap-4">
+          {/* Patient Info Card */}
+          <div className="flex items-center gap-4 bg-neutral-900/50 p-4 rounded-2xl border border-neutral-800">
+            <div className="w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+              <User className="text-blue-400 w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-neutral-200">{selectedPatient?.name || data.name}</p>
+              <p className="text-xs text-neutral-500">Patient ID: {data.id}</p>
+            </div>
           </div>
         </div>
       </header>
@@ -109,6 +128,9 @@ export default function DashboardPage({ data }: { data: DashboardData }) {
               <StatsGrid data={data} />
               <div className="bg-neutral-900/40 border border-neutral-800 p-2 rounded-[32px]">
                 <RecoveryTrajectory data={data} />
+              </div>
+              <div className="bg-neutral-900/40 border border-neutral-800 p-2 rounded-[32px]">
+                <PainIndexChart data={data} />
               </div>
             </div>
           )}

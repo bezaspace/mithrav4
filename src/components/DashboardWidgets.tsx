@@ -82,6 +82,40 @@ export function RecoveryTrajectory({ data }: { data: any }) {
   );
 }
 
+export function PainIndexChart({ data }: { data: any }) {
+  return (
+    <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl backdrop-blur-md h-full">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-sm font-semibold text-neutral-200 flex items-center gap-2">
+          <Heart size={16} className="text-red-400" />
+          Pain Index
+        </h3>
+      </div>
+      <div className="h-[200px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={data.painIndex}>
+            <defs>
+              <linearGradient id="colorPain" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#ef4444" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#262626" vertical={false} />
+            <XAxis dataKey="date" stroke="#525252" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => value.slice(5)} />
+            <YAxis stroke="#525252" fontSize={10} tickLine={false} axisLine={false} domain={[0, 10]} />
+            <Tooltip 
+              contentStyle={{ backgroundColor: '#171717', border: '1px solid #262626', borderRadius: '8px' }}
+              itemStyle={{ fontSize: '10px' }}
+              formatter={(value: any) => [value, 'Pain Level']}
+            />
+            <Area type="monotone" dataKey="pain_level" stroke="#ef4444" fillOpacity={1} fill="url(#colorPain)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export function TherapyAllocation({ data }: { data: any }) {
   return (
     <div className="bg-neutral-900/60 border border-neutral-800 p-6 rounded-3xl backdrop-blur-md">

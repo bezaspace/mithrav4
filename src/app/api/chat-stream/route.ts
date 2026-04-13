@@ -4,6 +4,7 @@ import { SentenceBuffer } from "@/lib/sentenceBuffer";
 import { cleanTeluguTextForTTS } from "@/lib/textCleaner";
 import { neuroRehabTools } from "@/lib/tools/definitions";
 import { executeTool, ToolResult } from "@/lib/tools";
+import { getDatabase } from "@/lib/db";
 
 interface Message {
   role: "user" | "model";
@@ -147,6 +148,41 @@ export async function POST(request: NextRequest) {
           return;
         }
 
+        const patientId = formData.get("patientId") as string | null;
+
+        // Fetch patient-specific context
+        const db = getDatabase();
+        const patient = db.prepare(
+          'SELECT name, age, surgery_type, recovery_stage, target_recovery_days FROM patient WHERE id = ?'
+        ).get(Number(patientId) || 1) as {
+          name: string;
+          age: number;
+          surgery_type: string;
+          recovery_stage: number;
+          target_recovery_days: number;
+        } | undefined;
+
+        // Fetch patient medications
+        const medications = db.prepare(
+          'SELECT medication_name, dosage, frequency FROM medication_schedule WHERE patient_id = ? AND active = 1'
+        ).all(Number(patientId) || 1) as {
+          medication_name: string;
+          dosage: string;
+          frequency: string;
+        }[];
+
+        const medicationList = medications.map(m => `${m.medication_name} (${m.dosage}, ${m.frequency})`).join(', ');
+
+        // Build dynamic system prompt with patient context
+        const patientContext = patient 
+          ? `You are currently talking to ${patient.name}, a ${patient.age}-year-old patient recovering from ${patient.surgery_type}. 
+             They are currently in recovery stage ${patient.recovery_stage} of ${patient.target_recovery_days} days.
+             Current medications: ${medicationList || 'None recorded'}.
+             When responding, address them by name and tailor your advice to their specific condition and recovery stage.`
+          : '';
+
+        const dynamicSystemPrompt = `${SYSTEM_PROMPT}\n\n${patientContext}`;
+
         // Convert audio file to base64
         const bytes = await audioFile.arrayBuffer();
         const base64Audio = Buffer.from(bytes).toString("base64");
@@ -269,7 +305,7 @@ export async function POST(request: NextRequest) {
             model: "gemini-3.1-flash-lite-preview",
             contents,
             config: {
-              systemInstruction: SYSTEM_PROMPT,
+              systemInstruction: dynamicSystemPrompt,
               maxOutputTokens: 220,
               thinkingConfig: {
                 thinkingLevel: ThinkingLevel.MINIMAL,
@@ -300,7 +336,7 @@ export async function POST(request: NextRequest) {
               const result = await executeTool({
                 name: callName,
                 args: functionCall.args || {},
-              });
+              }, Number(patientId) || undefined);
 
               toolResults.push(result);
 
