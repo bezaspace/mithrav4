@@ -51,7 +51,7 @@ export async function executeGetPatientProfile(patientId?: number) {
   };
 }
 
-export async function executeGetRecoveryTrajectory() {
+export async function executeGetRecoveryTrajectory(patientId?: number) {
   const db = getDatabase();
 
   const data = db
@@ -59,10 +59,11 @@ export async function executeGetRecoveryTrajectory() {
       `
     SELECT day, cognitive, physical, speech
     FROM recovery_trajectory
+    WHERE patient_id = ?
     ORDER BY id ASC
   `
     )
-    .all() as {
+    .all(patientId || 1) as {
     day: string;
     cognitive: number;
     physical: number;
@@ -141,5 +142,27 @@ export async function executeGetDailySchedule(patientId?: number) {
 
   return {
     schedule: data
+  };
+}
+
+export async function executeGetPainIndex(patientId?: number) {
+  const db = getDatabase();
+
+  const data = db
+    .prepare(
+      `
+    SELECT date, pain_level
+    FROM pain_logs
+    WHERE patient_id = ?
+    ORDER BY id ASC
+  `
+    )
+    .all(patientId || 1) as {
+    date: string;
+    pain_level: number;
+  }[];
+
+  return {
+    painIndex: data
   };
 }

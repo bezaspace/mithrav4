@@ -4,6 +4,7 @@ import {
   executeGetTherapyAllocation,
   executeGetRecoveryScores,
   executeGetDailySchedule,
+  executeGetPainIndex,
 } from "./executors";
 
 export interface ToolCall {
@@ -46,6 +47,11 @@ export async function executeTool(call: ToolCall, patientId?: number): Promise<T
       return { toolName: name, result, isChart: false };
     }
 
+    case "get_pain_index": {
+      const result = await executeGetPainIndex(patientId);
+      return { toolName: name, result, isChart: false };
+    }
+
     case "render_progress_chart": {
       const chartType = args.chartType as string;
       const title = (args.title as string) || getDefaultChartTitle(chartType);
@@ -66,6 +72,9 @@ export async function executeTool(call: ToolCall, patientId?: number): Promise<T
           break;
         case "clinical_profile":
           chartData = await executeGetPatientProfile(patientId);
+          break;
+        case "pain_index":
+          chartData = await executeGetPainIndex(patientId);
           break;
         default:
           chartData = {};
@@ -94,6 +103,7 @@ function getDefaultChartTitle(chartType: string): string {
     recovery_scores: "Recovery Scores",
     daily_schedule: "Today's Schedule",
     clinical_profile: "Clinical Profile",
+    pain_index: "Pain Index",
   };
   return titles[chartType] || "Progress Chart";
 }

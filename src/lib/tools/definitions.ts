@@ -42,6 +42,14 @@ export const neuroRehabTools: FunctionDeclaration[] = [
     },
   },
   {
+    name: "get_pain_index",
+    description: "Fetch pain index data showing pain levels over the past days",
+    parameters: {
+      type: Type.OBJECT,
+      properties: {},
+    },
+  },
+  {
     name: "render_progress_chart",
     description: "Request to render a specific interactive chart component in the chat UI to visualize patient progress. Use this when the user asks about their progress, wants to see their scores, or when you want to show them a chart alongside your explanation.",
     parameters: {
@@ -49,7 +57,7 @@ export const neuroRehabTools: FunctionDeclaration[] = [
       properties: {
         chartType: {
           type: Type.STRING,
-          enum: ["recovery_trajectory", "therapy_allocation", "recovery_scores", "daily_schedule", "clinical_profile"],
+          enum: ["recovery_trajectory", "therapy_allocation", "recovery_scores", "daily_schedule", "clinical_profile", "pain_index"],
           description: "Type of chart to display",
         },
         title: {

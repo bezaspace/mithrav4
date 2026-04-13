@@ -104,7 +104,7 @@ Your role is to support patients recovering from neurological surgery by:
 
 Key Guidelines:
 - Always be warm, encouraging, and professional
-- When patients ask about their recovery trajectory, therapy allocation, recovery scores, daily schedule, or clinical profile, use the appropriate tools to fetch data and render charts
+- When patients ask about their recovery trajectory, therapy allocation, recovery scores, daily schedule, clinical profile, or pain levels, use the appropriate tools to fetch data and render charts
 - When displaying charts, explain what the data means in simple terms
 - Celebrate improvements in cognitive, physical, and speech scores
 - Offer gentle reminders about scheduled activities, exercises, or appointments
@@ -119,7 +119,8 @@ Available Tools:
 - get_therapy_allocation: Get therapy time distribution
 - get_recovery_scores: Get current recovery scores across all categories
 - get_daily_schedule: Get today's schedule with instructions
-- render_progress_chart: Display charts for recovery_trajectory, therapy_allocation, recovery_scores, daily_schedule, or clinical_profile`;
+- get_pain_index: Get pain levels over the past days
+- render_progress_chart: Display charts for recovery_trajectory, therapy_allocation, recovery_scores, daily_schedule, clinical_profile, or pain_index`;
 
 export async function POST(request: NextRequest) {
   const encoder = new TextEncoder();
@@ -194,13 +195,14 @@ export async function POST(request: NextRequest) {
         let accumulatedText = "";
         const toolResults: ToolResult[] = [];
         
-        // Sentence queue for TTS processing
+        // Sentence queue for TTS processing (skipped when ttsProvider === "none")
         const sentenceQueue: string[] = [];
         let isProcessingTts = false;
         let ttsIndex = 0;
 
         // Function to process next sentence in queue
         const processNextSentence = async () => {
+          if (ttsProvider === "none") return; // Skip TTS entirely
           if (isProcessingTts || ttsIndex >= sentenceQueue.length) {
             return;
           }
@@ -300,6 +302,140 @@ export async function POST(request: NextRequest) {
           functionDeclarations: [tool],
         }));
 
+        // ============================================================
+        // PATH 1: Text-only mode — use true streaming for real-time text
+        // ============================================================
+        if (ttsProvider === "none") {
+          let finalText = "";
+
+          // Helper to safely enqueue — returns false if controller is closed
+          const tryEnqueue = (data: SSEData): boolean => {
+            try {
+              controller.enqueue(encoder.encode(encodeSSE(data)));
+              return true;
+            } catch {
+              console.log("[Stream] Controller closed — client likely disconnected");
+              return false;
+            }
+          };
+
+          while (true) {
+            const streamResponse = await ai.models.generateContentStream({
+              model: "gemini-3.1-flash-lite-preview",
+              contents,
+              config: {
+                systemInstruction: dynamicSystemPrompt,
+                maxOutputTokens: 220,
+                thinkingConfig: {
+                  thinkingLevel: ThinkingLevel.MINIMAL,
+                },
+                tools: toolConfig,
+                automaticFunctionCalling: { disable: true },
+              },
+            });
+
+            let accumulatedText = "";
+            const functionCalls: Array<{ name: string; args?: Record<string, unknown> }> = [];
+            const responseContents: Array<Record<string, unknown>> = [];
+
+            for await (const chunk of streamResponse) {
+              // Emit text as it arrives — real-time streaming
+              if (chunk.text) {
+                accumulatedText += chunk.text;
+                if (!tryEnqueue({ type: "text", text: chunk.text })) {
+                  return; // client disconnected
+                }
+              }
+
+              // Collect function calls from chunks
+              const chunkFunctionCalls = chunk.functionCalls ?? [];
+              if (chunkFunctionCalls.length > 0) {
+                for (const fc of chunkFunctionCalls) {
+                  functionCalls.push({ name: fc.name ?? "unknown", args: (fc.args ?? {}) as Record<string, unknown> });
+                }
+              }
+
+              // Accumulate model content for conversation history
+              if (chunk.candidates?.[0]?.content) {
+                responseContents.push(chunk.candidates[0].content as unknown as Record<string, unknown>);
+              }
+            }
+
+            // If no function calls — we have the final response
+            if (functionCalls.length === 0) {
+              finalText = accumulatedText;
+              break;
+            }
+
+            // Execute tools and loop
+            if (responseContents.length > 0) {
+              for (const rc of responseContents) {
+                contents.push(rc);
+              }
+            }
+
+            const functionResponseParts: Array<Record<string, unknown>> = [];
+
+            for (const functionCall of functionCalls) {
+              const callName = functionCall.name || "unknown";
+              console.log(`Function call: ${callName}`, functionCall.args);
+
+              try {
+                const result = await executeTool({
+                  name: callName,
+                  args: functionCall.args || {},
+                }, Number(patientId) || undefined);
+
+                toolResults.push(result);
+
+                if (!tryEnqueue({ type: "tool_result", toolName: result.toolName, result: result.result })) {
+                  return;
+                }
+
+                functionResponseParts.push({
+                  functionResponse: {
+                    name: callName,
+                    response: { result: result.result },
+                  },
+                });
+              } catch (error) {
+                console.error(`Tool execution error for ${callName}:`, error);
+
+                const errorResult = { error: "Failed to execute tool" };
+                if (!tryEnqueue({ type: "tool_result", toolName: callName, result: errorResult })) {
+                  return;
+                }
+
+                functionResponseParts.push({
+                  functionResponse: {
+                    name: callName,
+                    response: errorResult,
+                  },
+                });
+              }
+            }
+
+            contents.push({
+              role: "user",
+              parts: functionResponseParts,
+            });
+            // Loop continues — model gets tool results and generates next response
+          }
+
+          // Send done signal
+          tryEnqueue({
+            type: "done",
+            text: finalizeAssistantReply(finalText),
+          });
+
+          controller.close();
+          return;
+        }
+
+        // ============================================================
+        // PATH 2: TTS mode (sarvam/piper) — non-streaming for sentence-based audio
+        // ============================================================
+
         while (true) {
           const response = await ai.models.generateContent({
             model: "gemini-3.1-flash-lite-preview",
@@ -385,7 +521,9 @@ export async function POST(request: NextRequest) {
           });
         }
 
-        if (accumulatedText.length > 0) {
+        // For TTS-enabled mode: queue sentences for audio synthesis
+        // For "none" mode: text was already sent immediately above
+        if (ttsProvider !== "none" && accumulatedText.length > 0) {
           sentenceBuffer.add(accumulatedText);
 
           controller.enqueue(
@@ -398,12 +536,13 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Flush remaining buffer
-        sentenceBuffer.flush();
-
-        // Wait for all sentences to be processed
-        while (ttsIndex < sentenceQueue.length || isProcessingTts) {
-          await new Promise((resolve) => setTimeout(resolve, 50));
+        // Flush remaining buffer (only needed for TTS mode)
+        if (ttsProvider !== "none") {
+          sentenceBuffer.flush();
+          // Wait for all sentences to be processed
+          while (ttsIndex < sentenceQueue.length || isProcessingTts) {
+            await new Promise((resolve) => setTimeout(resolve, 50));
+          }
         }
 
         accumulatedText = finalizeAssistantReply(accumulatedText);

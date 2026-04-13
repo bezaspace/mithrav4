@@ -1,13 +1,22 @@
 "use client";
 
-export type TtsProvider = "sarvam" | "piper";
+import { TtsProvider } from "@/types/tts";
 
 interface TtsToggleProps {
   provider: TtsProvider;
   onToggle: () => void;
 }
 
+const PROVIDERS: { value: TtsProvider; label: string; color: string }[] = [
+  { value: "sarvam", label: "Sarvam AI", color: "bg-cyan-500" },
+  { value: "piper", label: "Piper (Local)", color: "bg-emerald-500" },
+  { value: "none", label: "None (Text Only)", color: "bg-zinc-500" },
+];
+
 export function TtsToggle({ provider, onToggle }: TtsToggleProps) {
+  const currentIndex = PROVIDERS.findIndex((p) => p.value === provider);
+  const active = PROVIDERS[currentIndex];
+
   return (
     <button
       onClick={onToggle}
@@ -15,14 +24,8 @@ export function TtsToggle({ provider, onToggle }: TtsToggleProps) {
     >
       <span className="text-zinc-400">TTS:</span>
       <div className="flex items-center gap-1.5">
-        <div
-          className={`w-2 h-2 rounded-full ${
-            provider === "sarvam" ? "bg-cyan-500" : "bg-emerald-500"
-          }`}
-        />
-        <span className="text-zinc-200 font-medium">
-          {provider === "sarvam" ? "Sarvam AI" : "Piper (Local)"}
-        </span>
+        <div className={`w-2 h-2 rounded-full ${active.color}`} />
+        <span className="text-zinc-200 font-medium">{active.label}</span>
       </div>
       <svg
         className="w-3 h-3 text-zinc-500 ml-1"

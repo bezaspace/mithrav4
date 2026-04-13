@@ -2,8 +2,9 @@
 
 import { useState, useCallback, useRef } from "react";
 import type { ToolResult } from "@/components/DynamicComponentRenderer";
+import type { TtsProvider } from "@/types/tts";
 
-export type TtsProvider = "sarvam" | "piper";
+export type { TtsProvider } from "@/types/tts";
 
 interface Message {
   role: "user" | "model";
@@ -61,9 +62,13 @@ export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoic
     }
   }, []);
 
-  // Toggle between Sarvam and Piper
+  // Cycle through Sarvam → Piper → None → Sarvam
   const toggleTtsProvider = useCallback(() => {
-    setTtsProvider((prev) => (prev === "sarvam" ? "piper" : "sarvam"));
+    setTtsProvider((prev) => {
+      if (prev === "sarvam") return "piper";
+      if (prev === "piper") return "none";
+      return "sarvam";
+    });
   }, []);
 
   // Play audio from base64 MP3 or WAV
@@ -310,7 +315,8 @@ export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoic
                     break;
 
                   case "audio":
-                    // Audio received from server - queue and play
+                    // Audio received from server - queue and play (skip if "none")
+                    if (ttsProvider === "none") break;
                     if (data.data && data.text) {
                       const format: "mp3" | "wav" = ttsProvider === "sarvam" ? "mp3" : "wav";
                       queueAudio({
@@ -366,7 +372,10 @@ export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoic
                     // Note: currentToolResults are NOT cleared here - they persist
                     // until the user asks a new question or interrupts
                     // They get cleared in sendAudioToAI and stopSpeaking instead
-                    setCurrentStreamingText("");
+                    // When TTS is "none", keep text on screen so user can read it
+                    if (ttsProvider !== "none") {
+                      setCurrentStreamingText("");
+                    }
                     break;
                 }
               } catch (err) {

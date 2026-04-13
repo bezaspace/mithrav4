@@ -5,6 +5,7 @@ import { TherapyAllocationChart } from "./charts/TherapyAllocationChart";
 import { RecoveryScoresChart } from "./charts/RecoveryScoresChart";
 import { DailyScheduleChart } from "./charts/DailyScheduleChart";
 import { ClinicalProfileCard } from "./charts/ClinicalProfileCard";
+import { PainIndexChart } from "./charts/PainIndexChart";
 
 export interface ToolResult {
   toolName: string;
@@ -125,6 +126,20 @@ export function DynamicComponentRenderer({
             );
           }
 
+          case "get_pain_index": {
+            return (
+              <div
+                key={`${tool.toolName}-${index}`}
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 md:p-5"
+              >
+                <h4 className="text-sm font-semibold text-zinc-200 mb-3">
+                  Pain Index
+                </h4>
+                <PainIndexChart data={result as Parameters<typeof PainIndexChart>[0]['data']} compact />
+              </div>
+            );
+          }
+
           default:
             return null;
         }
@@ -179,6 +194,14 @@ function renderChart(
         />
       );
 
+    case "pain_index":
+      return (
+        <PainIndexChart
+          data={data as Parameters<typeof PainIndexChart>[0]['data']}
+          compact={compact}
+        />
+      );
+
     default:
       return (
         <div className="text-zinc-500 text-sm">Unknown chart type: {chartType}</div>
@@ -193,6 +216,7 @@ function getDefaultTitle(chartType: string): string {
     recovery_scores: "Recovery Scores",
     daily_schedule: "Today's Schedule",
     clinical_profile: "Clinical Profile",
+    pain_index: "Pain Index",
   };
   return titles[chartType] || "Progress Chart";
 }

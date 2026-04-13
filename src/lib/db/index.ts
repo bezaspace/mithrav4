@@ -202,16 +202,25 @@ interface PatientProfile {
 }
 
 const patientProfiles: PatientProfile[] = [
-  { name: 'Ravi Kumar', age: 58, surgery_type: 'Brain Tumor Removal', surgery_date: '2024-01-15', discharge_date: '2024-01-22', recovery_stage: 3, target_recovery_days: 90 },
-  { name: 'Priya Sharma', age: 42, surgery_type: 'Stroke Recovery', surgery_date: '2024-02-01', discharge_date: '2024-02-10', recovery_stage: 2, target_recovery_days: 120 },
-  { name: 'Venkat Reddy', age: 68, surgery_type: 'Aneurysm Repair', surgery_date: '2024-01-20', discharge_date: '2024-01-28', recovery_stage: 4, target_recovery_days: 60 },
-  { name: 'Lakshmi Devi', age: 55, surgery_type: 'Traumatic Brain Injury', surgery_date: '2024-02-10', discharge_date: '2024-02-20', recovery_stage: 1, target_recovery_days: 180 },
-  { name: 'Suresh Babu', age: 48, surgery_type: 'Spine Surgery', surgery_date: '2024-01-25', discharge_date: '2024-02-01', recovery_stage: 2, target_recovery_days: 90 },
-  { name: 'Anjali Mehta', age: 35, surgery_type: 'Parkinson\'s DBS', surgery_date: '2024-02-15', discharge_date: '2024-02-18', recovery_stage: 3, target_recovery_days: 45 },
-  { name: 'Rajesh Iyer', age: 62, surgery_type: 'Epilepsy Surgery', surgery_date: '2024-01-30', discharge_date: '2024-02-05', recovery_stage: 3, target_recovery_days: 75 },
-  { name: 'Kavita Nair', age: 72, surgery_type: 'Hydrocephalus Shunt', surgery_date: '2024-02-05', discharge_date: '2024-02-12', recovery_stage: 2, target_recovery_days: 60 },
-  { name: 'Arjun Singh', age: 28, surgery_type: 'Cerebral AVM', surgery_date: '2024-02-20', discharge_date: '2024-02-25', recovery_stage: 1, target_recovery_days: 150 },
-  { name: 'Meera Krishnan', age: 50, surgery_type: 'Meningioma Removal', surgery_date: '2024-02-08', discharge_date: '2024-02-15', recovery_stage: 4, target_recovery_days: 90 },
+  // Post Lumbar Spine Fixation
+  { name: 'Ravi Kumar', age: 52, surgery_type: 'Post Lumbar Spine Fixation', surgery_date: '2024-01-15', discharge_date: '2024-01-25', recovery_stage: 3, target_recovery_days: 90 },
+  { name: 'Priya Sharma', age: 58, surgery_type: 'Post Lumbar Spine Fixation', surgery_date: '2024-02-01', discharge_date: '2024-02-10', recovery_stage: 2, target_recovery_days: 90 },
+
+  // Post Cervical Fixation
+  { name: 'Venkat Reddy', age: 62, surgery_type: 'Post Cervical Fixation', surgery_date: '2024-01-20', discharge_date: '2024-01-30', recovery_stage: 4, target_recovery_days: 120 },
+  { name: 'Lakshmi Devi', age: 55, surgery_type: 'Post Cervical Fixation', surgery_date: '2024-02-10', discharge_date: '2024-02-20', recovery_stage: 1, target_recovery_days: 120 },
+
+  // Post Tumor
+  { name: 'Suresh Babu', age: 48, surgery_type: 'Post Tumor Resection', surgery_date: '2024-01-25', discharge_date: '2024-02-05', recovery_stage: 2, target_recovery_days: 150 },
+  { name: 'Anjali Mehta', age: 65, surgery_type: 'Post Tumor Resection', surgery_date: '2024-02-15', discharge_date: '2024-02-22', recovery_stage: 3, target_recovery_days: 180 },
+
+  // Post Accident
+  { name: 'Rajesh Iyer', age: 35, surgery_type: 'Post Accident Trauma', surgery_date: '2024-01-30', discharge_date: '2024-02-15', recovery_stage: 1, target_recovery_days: 180 },
+  { name: 'Kavita Nair', age: 42, surgery_type: 'Post Accident Trauma', surgery_date: '2024-02-05', discharge_date: '2024-02-18', recovery_stage: 2, target_recovery_days: 150 },
+
+  // Head Surgery
+  { name: 'Arjun Singh', age: 45, surgery_type: 'Head Surgery - Craniotomy', surgery_date: '2024-02-20', discharge_date: '2024-02-28', recovery_stage: 1, target_recovery_days: 120 },
+  { name: 'Meera Krishnan', age: 58, surgery_type: 'Head Surgery - Craniotomy', surgery_date: '2024-02-08', discharge_date: '2024-02-16', recovery_stage: 3, target_recovery_days: 90 },
 ];
 
 function insertMockData() {
@@ -456,45 +465,30 @@ function getMedicationsForSurgery(surgeryType: string): Array<{ name: string; do
   ];
 
   const specificMeds: Record<string, Array<{ name: string; dosage: string; frequency: string; timeOfDay: string }>> = {
-    'Brain Tumor Removal': [
-      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Dexamethasone', dosage: '4mg', frequency: 'Once daily', timeOfDay: 'Morning' }
-    ],
-    'Stroke Recovery': [
-      { name: 'Aspirin', dosage: '81mg', frequency: 'Once daily', timeOfDay: 'Morning' },
-      { name: 'Atorvastatin', dosage: '20mg', frequency: 'Once daily', timeOfDay: 'Evening' }
-    ],
-    'Aneurysm Repair': [
-      { name: 'Nimodipine', dosage: '60mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Amlodipine', dosage: '5mg', frequency: 'Once daily', timeOfDay: 'Morning' }
-    ],
-    'Traumatic Brain Injury': [
-      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Gabapentin', dosage: '300mg', frequency: 'Three times daily', timeOfDay: 'Morning, Afternoon, Evening' }
-    ],
-    'Spine Surgery': [
+    'Post Lumbar Spine Fixation': [
       { name: 'Gabapentin', dosage: '300mg', frequency: 'Three times daily', timeOfDay: 'Morning, Afternoon, Evening' },
-      { name: 'Muscle Relaxant', dosage: '10mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
+      { name: 'Muscle Relaxant', dosage: '10mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
+      { name: 'NSAID', dosage: '500mg', frequency: 'As needed', timeOfDay: 'With meals' }
     ],
-    'Parkinson\'s DBS': [
-      { name: 'Levodopa/Carbidopa', dosage: '25/100mg', frequency: 'Three times daily', timeOfDay: 'Morning, Afternoon, Evening' },
-      { name: 'Entacapone', dosage: '200mg', frequency: 'With each levodopa dose', timeOfDay: 'Morning, Afternoon, Evening' }
+    'Post Cervical Fixation': [
+      { name: 'Gabapentin', dosage: '300mg', frequency: 'Three times daily', timeOfDay: 'Morning, Afternoon, Evening' },
+      { name: 'Muscle Relaxant', dosage: '10mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
+      { name: 'Pain Medication', dosage: '50mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
     ],
-    'Epilepsy Surgery': [
+    'Post Tumor Resection': [
       { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Lamotrigine', dosage: '100mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
-    ],
-    'Hydrocephalus Shunt': [
-      { name: 'Acetazolamide', dosage: '250mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Antibiotic Prophylactic', dosage: '500mg', frequency: 'Once daily', timeOfDay: 'Morning' }
-    ],
-    'Cerebral AVM': [
-      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
-      { name: 'Nimodipine', dosage: '60mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
-    ],
-    'Meningioma Removal': [
       { name: 'Dexamethasone', dosage: '4mg', frequency: 'Once daily', timeOfDay: 'Morning' },
-      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
+      { name: 'Antiemetic', dosage: '10mg', frequency: 'As needed', timeOfDay: 'With meals' }
+    ],
+    'Post Accident Trauma': [
+      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
+      { name: 'Gabapentin', dosage: '300mg', frequency: 'Three times daily', timeOfDay: 'Morning, Afternoon, Evening' },
+      { name: 'Pain Medication', dosage: '50mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' }
+    ],
+    'Head Surgery - Craniotomy': [
+      { name: 'Levetiracetam', dosage: '500mg', frequency: 'Twice daily', timeOfDay: 'Morning, Evening' },
+      { name: 'Dexamethasone', dosage: '4mg', frequency: 'Once daily', timeOfDay: 'Morning' },
+      { name: 'Antibiotic Prophylactic', dosage: '500mg', frequency: 'Once daily', timeOfDay: 'Morning' }
     ]
   };
 
