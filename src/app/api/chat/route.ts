@@ -146,6 +146,20 @@ export async function POST(request: NextRequest) {
         }
 
         const patientId = formData.get("patientId") as string | null;
+        const apiKey = formData.get("apiKey") as string | null;
+
+        if (!apiKey) {
+          controller.enqueue(
+            encoder.encode(
+              encodeSSE({
+                type: "error",
+                error: "API key is required",
+              })
+            )
+          );
+          controller.close();
+          return;
+        }
 
         // Mock patient data for Vercel deployment
         const mockPatients: Record<number, { name: string; age: number; surgery_type: string; recovery_stage: number; target_recovery_days: number; medications: string[] }> = {
@@ -178,8 +192,8 @@ export async function POST(request: NextRequest) {
         const bytes = await audioFile.arrayBuffer();
         const base64Audio = Buffer.from(bytes).toString("base64");
 
-        // Initialize Gemini client
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        // Initialize Gemini client with user-provided API key
+        const ai = new GoogleGenAI({ apiKey });
 
         // Track accumulated text and tool results
         let accumulatedText = "";

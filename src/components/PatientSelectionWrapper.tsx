@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { PatientProvider, usePatient } from '@/context/PatientContext';
 import { User, Brain, Loader2 } from 'lucide-react';
+import ApiKeyInput, { getApiKey } from '@/components/ApiKeyInput';
 
 interface Patient {
   id: number;
@@ -23,7 +24,10 @@ function PatientSelectionScreen() {
             <Brain className="text-white w-8 h-8" />
           </div>
           <h1 className="text-2xl font-bold text-neutral-100 mb-2">Welcome to NeuroCompanion</h1>
-          <p className="text-neutral-500">Select a patient to begin the session</p>
+          <p className="text-neutral-500 mb-4">Select a patient to begin the session</p>
+          <div className="flex justify-center">
+            <ApiKeyInput />
+          </div>
         </div>
 
         <div className="space-y-3">

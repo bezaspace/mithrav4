@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { MessageSquare, LayoutDashboard, Brain, User } from 'lucide-react';
 import { usePatient } from '@/context/PatientContext';
+import ApiKeyInput from '@/components/ApiKeyInput';
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -60,6 +61,7 @@ export default function Navbar() {
 
           {/* Navigation Links */}
           <div className="flex items-center gap-2">
+            <ApiKeyInput />
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;

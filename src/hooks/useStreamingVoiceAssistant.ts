@@ -65,6 +65,15 @@ export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoic
         isInterruptedRef.current = false;
         console.log("[Interruption] Starting new request, flag cleared");
 
+        // Get API key from localStorage
+        const apiKey = localStorage.getItem('gemini_api_key');
+        if (!apiKey) {
+          setError("Please set your Gemini API key in the navbar");
+          setIsProcessing(false);
+          setIsStreaming(false);
+          return;
+        }
+
         setError(null);
         setIsProcessing(true);
         setIsStreaming(true);
@@ -74,13 +83,14 @@ export function useStreamingVoiceAssistant(patientId?: number): UseStreamingVoic
         // Create abort controller for this request
         abortControllerRef.current = new AbortController();
 
-        // Create form data with audio, conversation history, and patient ID
+        // Create form data with audio, conversation history, patient ID, and API key
         const formData = new FormData();
         formData.append("audio", audioBlob, "recording.webm");
         formData.append("conversation", JSON.stringify(conversation));
         if (patientId) {
           formData.append("patientId", patientId.toString());
         }
+        formData.append("apiKey", apiKey);
 
         // Send to streaming API
         const response = await fetch("/api/chat", {
