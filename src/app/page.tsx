@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { PushToTalkButton } from "@/components/PushToTalkButton";
 import { StreamingStatus } from "@/components/StreamingStatus";
 import { AudioWaveform } from "@/components/AudioWaveform";
-import { TtsToggle } from "@/components/TtsToggle";
 import { DynamicComponentRenderer } from "@/components/DynamicComponentRenderer";
 import { useAudioRecorder } from "@/hooks/useAudioRecorder";
 import { useStreamingVoiceAssistant } from "@/hooks/useStreamingVoiceAssistant";
@@ -27,8 +26,6 @@ export default function VoiceAssistantPage() {
     error: assistantError,
     currentStreamingText,
     currentToolResults,
-    ttsProvider,
-    toggleTtsProvider,
     stopSpeaking,
     sendAudioToAI,
   } = useStreamingVoiceAssistant(selectedPatientId ?? undefined);
@@ -121,11 +118,8 @@ export default function VoiceAssistantPage() {
               Voice Assistant
             </h1>
             <p className="text-xs text-zinc-500">
-              తెలుగు • Streaming mode
+              తెలుగు • Text-only mode
             </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <TtsToggle provider={ttsProvider} onToggle={toggleTtsProvider} />
           </div>
         </div>
       </header>
