@@ -2,7 +2,6 @@ import { GoogleGenAI, ThinkingLevel } from "@google/genai";
 import { NextRequest } from "next/server";
 import { neuroRehabTools } from "@/lib/tools/definitions";
 import { executeTool, ToolResult } from "@/lib/tools";
-import { getDatabase } from "@/lib/db";
 
 interface Message {
   role: "user" | "model";
@@ -148,34 +147,28 @@ export async function POST(request: NextRequest) {
 
         const patientId = formData.get("patientId") as string | null;
 
-        // Fetch patient-specific context
-        const db = getDatabase();
-        const patient = db.prepare(
-          'SELECT name, age, surgery_type, recovery_stage, target_recovery_days FROM patient WHERE id = ?'
-        ).get(Number(patientId) || 1) as {
-          name: string;
-          age: number;
-          surgery_type: string;
-          recovery_stage: number;
-          target_recovery_days: number;
-        } | undefined;
+        // Mock patient data for Vercel deployment
+        const mockPatients: Record<number, { name: string; age: number; surgery_type: string; recovery_stage: number; target_recovery_days: number; medications: string[] }> = {
+          1: { name: 'Ravi Kumar', age: 52, surgery_type: 'Post Lumbar Spine Fixation', recovery_stage: 3, target_recovery_days: 90, medications: ['Gabapentin (300mg, Three times daily)', 'Muscle Relaxant (10mg, Twice daily)'] },
+          2: { name: 'Priya Sharma', age: 58, surgery_type: 'Post Lumbar Spine Fixation', recovery_stage: 2, target_recovery_days: 90, medications: ['Gabapentin (300mg, Three times daily)', 'Muscle Relaxant (10mg, Twice daily)'] },
+          3: { name: 'Venkat Reddy', age: 62, surgery_type: 'Post Cervical Fixation', recovery_stage: 4, target_recovery_days: 120, medications: ['Gabapentin (300mg, Three times daily)', 'Pain Medication (50mg, Twice daily)'] },
+          4: { name: 'Lakshmi Devi', age: 55, surgery_type: 'Post Cervical Fixation', recovery_stage: 1, target_recovery_days: 120, medications: ['Gabapentin (300mg, Three times daily)', 'Pain Medication (50mg, Twice daily)'] },
+          5: { name: 'Suresh Babu', age: 48, surgery_type: 'Post Tumor Resection', recovery_stage: 2, target_recovery_days: 150, medications: ['Levetiracetam (500mg, Twice daily)', 'Dexamethasone (4mg, Once daily)'] },
+          6: { name: 'Anjali Mehta', age: 65, surgery_type: 'Post Tumor Resection', recovery_stage: 3, target_recovery_days: 180, medications: ['Levetiracetam (500mg, Twice daily)', 'Dexamethasone (4mg, Once daily)'] },
+          7: { name: 'Rajesh Iyer', age: 35, surgery_type: 'Post Accident Trauma', recovery_stage: 1, target_recovery_days: 180, medications: ['Levetiracetam (500mg, Twice daily)', 'Gabapentin (300mg, Three times daily)'] },
+          8: { name: 'Kavita Nair', age: 42, surgery_type: 'Post Accident Trauma', recovery_stage: 2, target_recovery_days: 150, medications: ['Levetiracetam (500mg, Twice daily)', 'Gabapentin (300mg, Three times daily)'] },
+          9: { name: 'Arjun Singh', age: 45, surgery_type: 'Head Surgery - Craniotomy', recovery_stage: 1, target_recovery_days: 120, medications: ['Levetiracetam (500mg, Twice daily)', 'Dexamethasone (4mg, Once daily)'] },
+          10: { name: 'Meera Krishnan', age: 58, surgery_type: 'Head Surgery - Craniotomy', recovery_stage: 3, target_recovery_days: 90, medications: ['Levetiracetam (500mg, Twice daily)', 'Dexamethasone (4mg, Once daily)'] },
+        };
 
-        // Fetch patient medications
-        const medications = db.prepare(
-          'SELECT medication_name, dosage, frequency FROM medication_schedule WHERE patient_id = ? AND active = 1'
-        ).all(Number(patientId) || 1) as {
-          medication_name: string;
-          dosage: string;
-          frequency: string;
-        }[];
-
-        const medicationList = medications.map(m => `${m.medication_name} (${m.dosage}, ${m.frequency})`).join(', ');
+        const patient = mockPatients[Number(patientId) || 1];
+        const medicationList = patient?.medications.join(', ') || 'None recorded';
 
         // Build dynamic system prompt with patient context
-        const patientContext = patient 
-          ? `You are currently talking to ${patient.name}, a ${patient.age}-year-old patient recovering from ${patient.surgery_type}. 
+        const patientContext = patient
+          ? `You are currently talking to ${patient.name}, a ${patient.age}-year-old patient recovering from ${patient.surgery_type}.
              They are currently in recovery stage ${patient.recovery_stage} of ${patient.target_recovery_days} days.
-             Current medications: ${medicationList || 'None recorded'}.
+             Current medications: ${medicationList}.
              When responding, address them by name and tailor your advice to their specific condition and recovery stage.`
           : '';
 
